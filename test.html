@@ -101,7 +101,7 @@ html[data-booking-type="hourly"] #luggage-container {display: none !important;}
 </style>
 <script>
 let stopCount = 0;
-let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:2.5,SFR:.05,TR:.0975,AF:5,HR:120,MR:120/60},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
+let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:5,HR:95,MR:95/60},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 let debounceTimer;
 function debounceMapUpdate(func, wait) {clearTimeout(debounceTimer);debounceTimer = setTimeout(func, wait);}
 function isBNAAirport(a){if(!a)return!1;a=a.toLowerCase();return a.includes("bna")||a.includes("nashville int")||a.includes("nashville airport")}
@@ -137,7 +137,113 @@ async function cTP(origin,destination,stops,passengers){try{const departureTimeF
 function cHP(){const hours=parseInt(document.getElementById("trip-hours").value)||3;const baseFare=hours*PR.HR;const serviceFee=baseFare*PR.SFR;const tax=(baseFare+serviceFee)*PR.TR;const total=baseFare+serviceFee+tax;const priceDetails={baseFare:baseFare,serviceFee:serviceFee,tax:tax,total:total,details:{hours:hours}};if(document.getElementById("booking-type").value==="hourly"){lPDet=priceDetails;uPD(priceDetails);}return priceDetails;}
 function uPWM(){console.log("Price update completed");}
 function tAF() {const e = document.getElementById("airport-fields");const t = document.getElementById("flight-type-container");const n = document.getElementById("arrival-fields");const o = document.getElementById("departure-fields");const bookingType = document.getElementById("booking-type").value;if (bookingType !== "transfer") {e.style.display = "none";t.style.display = "none";n.style.display = "none";o.style.display = "none";return;}e.style.display = "block";t.style.display = "none";const r = document.getElementById("pickup").value.toLowerCase();const a = document.getElementById("dropoff").value.toLowerCase();const c = isBNAAirport(r);const d = isBNAAirport(a);c ? (n.style.display = "block",document.getElementById("flight-type").value = "arrival") : n.style.display = "none";d ? (o.style.display = "block",c || (document.getElementById("flight-type").value = "departure")) : o.style.display = "none";uPWM();}
-function uPD(priceDetails){console.log("Updating price details:",priceDetails);const bookingType=document.getElementById("booking-type").value;const priceContainer=document.getElementById("price-breakdown");if(bookingType==="hourly"){const hours=priceDetails.details.hours||3;priceContainer.innerHTML=`<div class="price-details"><h3><i class="fas fa-file-invoice-dollar"></i> Price Breakdown</h3><div class="price-item"><span><i class="far fa-clock"></i> Hours (${hours}):</span><span>$${priceDetails.baseFare.toFixed(2)}</span></div><div class="price-item"><span><i class="fas fa-tools"></i> Service Fee (5%):</span><span>$${priceDetails.serviceFee.toFixed(2)}</span></div><div class="price-item"><span><i class="fas fa-receipt"></i> Tax (9.75%):</span><span>$${priceDetails.tax.toFixed(2)}</span></div><div class="price-item total"><span><i class="fas fa-money-check-alt"></i> Total:</span><span>$${priceDetails.total.toFixed(2)}</span></div></div>`;}else if(bookingType==="transfer"||bookingType==="point-to-point"){const googleDurationText=priceDetails.details.googleDurationText||"";const distanceMiles=priceDetails.details.miles?priceDetails.details.miles.toFixed(1):"N/A";const trafficInfoBox=`<div style="background-color: #2c3e50; padding: 10px; border-radius: 5px; margin: 10px 0; border: 1px solid #3498db;"><div class="price-item" style="color: #e74c3c; font-weight: bold;"><span><i class="fas fa-clock"></i> Travel time:</span><span>${googleDurationText}</span></div><div class="price-item" style="color: #fff;"><span><i class="fas fa-route"></i> Total distance:</span><span>${distanceMiles} miles</span></div></div>`;const serviceTitle=bookingType==="transfer"?"Airport Transfer Pricing":"Point-to-Point Pricing";priceContainer.innerHTML=`<div class="price-details"><h3><i class="fas fa-file-invoice-dollar"></i> ${serviceTitle}</h3>${trafficInfoBox}<div class="price-item"><span><i class="fas fa-car"></i> Base Fare:</span><span>$${priceDetails.baseFare.toFixed(2)}</span></div><div class="price-item"><span><i class="fas fa-route"></i> Distance Cost:</span><span>$${priceDetails.distanceCost.toFixed(2)}</span></div><div class="price-item"><span><i class="fas fa-users"></i> Passengers:</span><span>$${priceDetails.passengerCost.toFixed(2)}</span></div>${bookingType==="transfer"&&priceDetails.airportFee>0?`<div class="price-item"><span><i class="fas fa-plane"></i> Airport Fee:</span><span>$${priceDetails.airportFee.toFixed(2)}</span></div>`:""}<div class="price-item"><span><i class="fas fa-tools"></i> Service Fee (5%):</span><span>$${priceDetails.serviceFee.toFixed(2)}</span></div><div class="price-item"><span><i class="fas fa-receipt"></i> Tax (9.75%):</span><span>$${priceDetails.tax.toFixed(2)}</span></div><div class="price-item total"><span><i class="fas fa-money-check-alt"></i> Total:</span><span>$${priceDetails.total.toFixed(2)}</span></div></div>`;}if(priceDetails&&priceDetails.total){document.getElementById("checkout-button").setAttribute("data-price",priceDetails.total.toFixed(2));}lPDet=priceDetails;}
+function uPD(priceDetails){
+    console.log("Updating price details:", priceDetails);
+    const bookingType = document.getElementById("booking-type").value;
+    const priceContainer = document.getElementById("price-breakdown");
+    
+    if(bookingType === "hourly"){
+        const hours = priceDetails.details.hours || 3;
+        priceContainer.innerHTML = `
+            <div class="price-details">
+                <h3><i class="fas fa-file-invoice-dollar"></i> Price Breakdown</h3>
+                <div class="price-item">
+                    <span><i class="far fa-clock"></i> Hours (${hours}):</span>
+                    <span>$${priceDetails.baseFare.toFixed(2)}</span>
+                </div>
+                <div class="price-item">
+                    <span><i class="fas fa-tools"></i> Service Fee (5%):</span>
+                    <span>$${priceDetails.serviceFee.toFixed(2)}</span>
+                </div>
+                <div class="price-item">
+                    <span><i class="fas fa-receipt"></i> Tax (9.75%):</span>
+                    <span>$${priceDetails.tax.toFixed(2)}</span>
+                </div>
+                <div class="price-item total">
+                    <span><i class="fas fa-money-check-alt"></i> Total:</span>
+                    <span>$${priceDetails.total.toFixed(2)}</span>
+                </div>
+            </div>`;
+    } else if(bookingType === "transfer" || bookingType === "point-to-point"){
+        const googleDurationText = priceDetails.details.googleDurationText || "";
+        const distanceMiles = priceDetails.details.miles ? priceDetails.details.miles.toFixed(1) : "N/A";
+        
+        // Extract minutes from Google duration text
+        let totalMinutes = 0;
+        const durationParts = googleDurationText.match(/(\d+)\s*hour|(\d+)\s*min/g);
+        if (durationParts) {
+            durationParts.forEach(part => {
+                if (part.includes('hour')) {
+                    totalMinutes += parseInt(part) * 60;
+                } else if (part.includes('min')) {
+                    totalMinutes += parseInt(part);
+                }
+            });
+        }
+        
+        // Calculate price per minute
+        const pricePerMinute = totalMinutes > 0 ? (priceDetails.total / totalMinutes).toFixed(2) : "N/A";
+        
+        const trafficInfoBox = `
+            <div style="background-color: #2c3e50; padding: 10px; border-radius: 5px; margin: 10px 0; border: 1px solid #3498db;">
+                <div class="price-item" style="color: #e74c3c; font-weight: bold;">
+                    <span><i class="fas fa-clock"></i> Travel time:</span>
+                    <span>${googleDurationText}</span>
+                </div>
+                <div class="price-item" style="color: #fff;">
+                    <span><i class="fas fa-route"></i> Total distance:</span>
+                    <span>${distanceMiles} miles</span>
+                </div>
+                <div class="price-item" style="color: #fff;">
+                    <span><i class="fas fa-dollar-sign"></i> Price per minute:</span>
+                    <span>$${pricePerMinute}</span>
+                </div>
+            </div>`;
+            
+        const serviceTitle = bookingType === "transfer" ? "Airport Transfer Pricing" : "Point-to-Point Pricing";
+        
+        priceContainer.innerHTML = `
+            <div class="price-details">
+                <h3><i class="fas fa-file-invoice-dollar"></i> ${serviceTitle}</h3>
+                ${trafficInfoBox}
+                <div class="price-item">
+                    <span><i class="fas fa-car"></i> Base Fare:</span>
+                    <span>$${priceDetails.baseFare.toFixed(2)}</span>
+                </div>
+                <div class="price-item">
+                    <span><i class="fas fa-route"></i> Distance Cost:</span>
+                    <span>$${priceDetails.distanceCost.toFixed(2)}</span>
+                </div>
+                <div class="price-item">
+                    <span><i class="fas fa-users"></i> Passengers:</span>
+                    <span>$${priceDetails.passengerCost.toFixed(2)}</span>
+                </div>
+                ${bookingType === "transfer" && priceDetails.airportFee > 0 ? 
+                    `<div class="price-item">
+                        <span><i class="fas fa-plane"></i> Airport Fee:</span>
+                        <span>$${priceDetails.airportFee.toFixed(2)}</span>
+                    </div>` : ""}
+                <div class="price-item">
+                    <span><i class="fas fa-tools"></i> Service Fee (5%):</span>
+                    <span>$${priceDetails.serviceFee.toFixed(2)}</span>
+                </div>
+                <div class="price-item">
+                    <span><i class="fas fa-receipt"></i> Tax (9.75%):</span>
+                    <span>$${priceDetails.tax.toFixed(2)}</span>
+                </div>
+                <div class="price-item total">
+                    <span><i class="fas fa-money-check-alt"></i> Total:</span>
+                    <span>$${priceDetails.total.toFixed(2)}</span>
+                </div>
+            </div>`;
+    }
+    
+    if(priceDetails && priceDetails.total){
+        document.getElementById("checkout-button").setAttribute("data-price", priceDetails.total.toFixed(2));
+    }
+    
+    lPDet = priceDetails;
+}
 function aPL(){setupPassengerListeners();}
 function fBD(e){const noStopsMessage="  • Direct route with no stops",n=e.priceDetails||{},bookingTypeLabel="transfer"===e.bookingType?"AIRPORT TRANSFER":"HOURLY";let flightInfo="";if("transfer"===e.bookingType){e.flightInfo&&(flightInfo+=`\nArrival Flight Info: • Airline: ${e.flightInfo.airline} • Flight Number: ${e.flightInfo.flightNumber} • Flight Time: ${e.flightInfo.flightTime||"Not provided"}`);e.departureInfo&&(flightInfo+=`\nDeparture Flight Info:  • Airline: ${e.departureInfo.airline}  • Flight Number: ${e.departureInfo.flightNumber}  • Flight Time: ${e.departureInfo.flightTime||"Not provided"}`);}const o=n&&n.total?`Price Breakdown:- Base Fare: ${(n.baseFare||0).toFixed(2)}${n.distanceCost!==void 0?`• Distance Cost: ${n.distanceCost.toFixed(2)}\n`:""}${n.timeCost!==void 0?`• Time Cost: ${n.timeCost.toFixed(2)}\n`:""}${n.airportFee>0?`• Airport Fee: ${n.airportFee.toFixed(2)}\n`:""}- Service Fee: ${(n.serviceFee||0).toFixed(2)}- Tax: ${(n.tax||0).toFixed(2)}Total: ${(n.total||0).toFixed(2)}`:"";return`Booking ConfirmationDate: ${e.bookingDate||"N/A"}Time: ${e.bookingTime||"N/A"}Booking Type: ${bookingTypeLabel}${flightInfo}${"hourly"===e.bookingType?`Hours: ${e.hourly?.hours||"N/A"}Itinerary: ${e.itinerary||"N/A"}`:`Special Request: ${e.specialRequest||"N/A"}`}Pickup: ${e.pickup||e.transfer?.pickup||"N/A"}Dropoff: ${e.dropoff||e.transfer?.dropoff||"N/A"}Route:${noStopsMessage}${"hourly"!==e.bookingType?`Passengers: ${e.passengers?.total||1} (Adults: ${e.passengers?.adults||1}, Kids: ${e.passengers?.kids||0})`:""}Luggage: ${e.passengers?.luggage||0}Phone: ${e.contact?.phone||"N/A"}Email: ${e.contact?.email||"N/A"}Vehicle: ${e.vehicle?e.vehicle.type:"Not Selected"}${o}`;}
 function sV(){const errors=[];const bookingType=document.getElementById("booking-type").value;const fieldsToValidate={'pickup-date':'Pickup Date','pickup-time':'Pickup Time','pickup':'Pickup Point','phone':'Phone Number','email':'Email'};if(bookingType==="transfer"||bookingType==="point-to-point"){fieldsToValidate['dropoff']='Drop-off Point';fieldsToValidate['passengers']='Passengers';}for(let[fieldId,fieldName]of Object.entries(fieldsToValidate)){const field=document.getElementById(fieldId);if(!field||!field.value.trim()){errors.push(fieldName);if(field)field.classList.add("error-field");}else{field.classList.remove("error-field");}}if(bookingType==="transfer"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!isBNAAirport(pickup)&&!isBNAAirport(dropoff)){errors.push("At least one location must be Nashville International Airport (BNA)");document.getElementById("pickup").classList.add("error-field");document.getElementById("dropoff").classList.add("error-field");}}if(bookingType==="transfer"||bookingType==="point-to-point"){const passengersCount=parseInt(document.getElementById("passengers").value)||0;const kidsCount=parseInt(document.getElementById("kids").value)||0;const totalPassengers=passengersCount+kidsCount;if(totalPassengers>4){alert("Para "+(bookingType==="transfer"?"Airport Transfer":"Point-to-Point")+", vehicles are not available for more than 4 passengers. Please reduce the number of passengers.");document.getElementById("passengers").classList.add("error-field");document.getElementById("kids").classList.add("error-field");return false;}}if(bookingType==="point-to-point"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!pickup||!dropoff){alert("Please provide both pickup and dropoff points for Point-to-Point.");return false;}}const phone=document.getElementById("phone").value.trim();if(phone&&!/^\d{10}$/.test(phone)){errors.push("Valid 10-digit Phone Number");document.getElementById("phone").classList.add("error-field");}const email=document.getElementById("email").value.trim();if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){errors.push("Valid Email Address");document.getElementById("email").classList.add("error-field");}if(errors.length>0){alert("Please correct the following:\n\n"+errors.join("\n"));return false;}document.getElementById("vehicle-section").classList.remove("hidden");lVBPC();return true;}
