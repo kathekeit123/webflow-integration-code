@@ -630,6 +630,10 @@ function uPD(priceDetails) {
           <span><i class="fas fa-route"></i> Total distance:</span>
           <span>${googleDistanceText}</span>
         </div>
+        <div class="price-item" style="color: #fff;">
+          <span><i class="fas fa-dollar-sign"></i> Price per minute:</span>
+          <span>$${pricePerMinute.toFixed(2)}</span>
+        </div>
       </div>`;
       
     const serviceTitle = bookingType === "transfer" ? "Airport Transfer Pricing" : "Point-to-Point Pricing";
