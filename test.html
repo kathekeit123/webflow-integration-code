@@ -245,7 +245,10 @@ function adjustDuration(e) {
     document.getElementById(activeButtonId).classList.remove("active");
   }, 300);
   
-  // Actualizar inmediatamente el precio fijo para Hourly
+  // Update the fixed price box immediately
+  updateFixedHourlyPrice();
+  
+  // Also update the price breakdown
   const hourlyRate = PR.HR;
   const total = hours * hourlyRate;
   
@@ -258,10 +261,10 @@ function adjustDuration(e) {
     }
   };
   
-  // Guardar los detalles del precio
+  // Save the price details
   lPDet = priceDetails;
   
-  // Actualizar la visualización de precios
+  // Update the price breakdown display
   const priceContainer = document.getElementById("price-breakdown");
   priceContainer.innerHTML = `
     <div class="price-details">
@@ -276,7 +279,7 @@ function adjustDuration(e) {
       </div>
     </div>`;
   
-  // Configurar el precio en el botón de pago
+  // Set the price on the checkout button
   document.getElementById("checkout-button").setAttribute("data-price", total.toFixed(2));
 }
 function cAHAT(){return cAT(document.getElementById("pickup").value.toLowerCase()) || cAT(document.getElementById("dropoff").value.toLowerCase());}
@@ -811,7 +814,17 @@ function updateMapAndPrice() {dMU();}
           </div>
           <div><button type="button" id="checkout-button" class="hidden" onclick="hS(event)">Check Out</button></div>
         </div>
-        <div id="price-breakdown"></div>
+        <div id="price-breakdown"></div><div id="fixed-hourly-price" class="price-details" style="display:none; margin-top:15px;">
+          <h3><i class="fas fa-file-invoice-dollar"></i> Hourly Rate</h3>
+          <div class="price-item">
+            <span><i class="far fa-clock"></i> <span id="fixed-hours-display">3</span> hour(s) × $<span id="fixed-rate">95.00</span>/hour:</span>
+            <span>$<span id="fixed-price">285.00</span></span>
+          </div>
+          <div class="price-item total">
+            <span><i class="fas fa-money-check-alt"></i> Total:</span>
+            <span>$<span id="fixed-total">285.00</span></span>
+          </div>
+        </div>
         <div id="sm" style="display:none;">Your booking has been successfully submitted. Processing payment...</div>
       </form>
     </div>
