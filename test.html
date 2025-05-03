@@ -224,7 +224,279 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 function iACF(e){if (!e) return;try {e.setAttribute("autocomplete", "off");e.setAttribute("autocorrect", "off");e.setAttribute("autocapitalize", "off");e.setAttribute("spellcheck", "false");let t = new google.maps.places.Autocomplete(e, {bounds: mTNB,strictBounds: true,componentRestrictions: {country: 'us'},fields: ['address_components', 'geometry', 'name', 'formatted_address', 'types']});t.addListener("place_changed", function() {const n = t.getPlace();if (!n || !n.address_components) {dMU();checkAirportAddressStatus();tAF();return;}checkAirportAddressStatus();tAF();dMU();});e.addEventListener('input', function() {checkAirportAddressStatus();dMU();});} catch (t) {console.error("Error setting up autocomplete:", t);e.addEventListener('change', dMU);}}
 function showDefaultMap(){const e=document.getElementById("map-frame");if(!e)return;document.getElementById("map-loading").style.opacity="1",e.src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAbzaG5x-Vk6dk_MhIcz565gIEnNYDaNTE&q=Nashville,Tennessee&zoom=10",e.onload=()=>{document.getElementById("map-loading").style.opacity="0",e.style.opacity="1"},setTimeout(()=>{document.getElementById("map-loading").style.opacity="0",e.style.opacity="1"},3e3)}window.addEventListener("DOMContentLoaded", () => {initMapDisplay();document.getElementById("pickup-date").min = (new Date).toISOString().split("T")[0];document.querySelector(".booking-type-selector").style.display = "flex";"transfer" === document.getElementById("booking-type").value ? sBT("transfer") : sBT("hourly");document.getElementById("trip-type") && (document.getElementById("trip-type").addEventListener("change", tTT), tTT());document.getElementById("pickup").addEventListener("change", dMU);document.getElementById("dropoff").addEventListener("change", dMU);document.getElementById("location-type").addEventListener("change", function() { tAF() });document.getElementById("trip-hours").value = 3;document.getElementById("hours-display").textContent = 3;localStorage.removeItem('paymentCompleted');localStorage.removeItem('paymentInProgress');localStorage.removeItem('finalRedirect');localStorage.removeItem('squareRedirectTime');sessionStorage.removeItem('paymentInitiated');sessionStorage.removeItem('paymentStartTime');sessionStorage.removeItem('paymentCompleted');sessionStorage.removeItem('pageViewedAfterPayment');document.cookie = "payment_complete=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";document.cookie = "payment_started=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";document.cookie = "target_redirect=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";if (document.getElementById("booking-type").value === "hourly") {document.getElementById("luggage-container").style.display = "none";}document.getElementById("hourly-btn").addEventListener("click", function() {document.getElementById("luggage-container").style.display = "none"});document.getElementById("transfer-btn").addEventListener("click", function() {document.getElementById("luggage-container").style.display = "block";});setTimeout(function() { typeof google === 'undefined' || typeof google.maps === 'undefined' && initAC() }, 500);});
-async function hS(e){if(e&&e.preventDefault){e.preventDefault();}if(pIP){return void alert("Payment is already being processed. Please wait.");}const bookingType=document.getElementById("booking-type").value;if(bookingType==="transfer"||bookingType==="point-to-point"){const passengersCount=parseInt(document.getElementById("passengers").value)||0;const kidsCount=parseInt(document.getElementById("kids").value)||0;const totalPassengers=passengersCount+kidsCount;if(totalPassengers>4){alert("Para "+(bookingType==="transfer"?"Airport Transfer":"Point-to-Point")+", no hay vehículos disponibles para más de 4 pasajeros. Por favor reduzca el número de pasajeros.");return;}}if(bookingType==="transfer"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!isBNAAirport(pickup)&&!isBNAAirport(dropoff)){alert("For airport transfers, at least one address must be Nashville International Airport (BNA).");return;}if(isBNAAirport(pickup)){const airline=document.getElementById("airline").value.trim();const flight=document.getElementById("flight").value.trim();if(!airline||!flight){alert("Please provide your arrival flight information.");return;}}if(isBNAAirport(dropoff)){const depAirline=document.getElementById("dep-airline").value.trim();const depFlight=document.getElementById("dep-flight").value.trim();if(!depAirline||!depFlight){alert("Please provide your departure flight information.");return;}}}else if(bookingType==="point-to-point"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!pickup||!dropoff){alert("Please provide both pickup and dropoff points for Point-to-Point.");return;}}pIP=true;sL();try{const bookingData={bookingType:document.getElementById("booking-type").value,bookingDate:document.getElementById("pickup-date").value,bookingTime:document.getElementById("pickup-time").value,passengers:{adults:document.getElementById("passengers").value,kids:document.getElementById("kids").value,total:parseInt(document.getElementById("passengers").value)+parseInt(document.getElementById("kids").value),luggage:document.getElementById("luggage").value},contact:{phone:document.getElementById("phone").value,email:document.getElementById("email").value}};if("hourly"===bookingData.bookingType){bookingData.hourly={hours:document.getElementById("trip-hours").value};bookingData.pickup=document.getElementById("pickup").value;bookingData.dropoff="";bookingData.itinerary=document.getElementById("hourly-itinerary").value;}else{bookingData.transfer={pickup:document.getElementById("pickup").value,dropoff:document.getElementById("dropoff").value};if(bookingData.bookingType==="transfer"){if(isBNAAirport(bookingData.transfer.pickup)){bookingData.flightInfo={type:"arrival",airline:document.getElementById("airline").value,flightNumber:document.getElementById("flight").value,flightTime:document.getElementById("arrival-time").value};}if(isBNAAirport(bookingData.transfer.dropoff)){bookingData.departureInfo={type:"departure",airline:document.getElementById("dep-airline").value,flightNumber:document.getElementById("dep-flight").value,flightTime:document.getElementById("departure-time").value};}}bookingData.specialRequest=document.getElementById("transfer-special-request").value;bookingData.stops=[];}const price=document.getElementById("checkout-button").getAttribute("data-price");bookingData.price=price;bookingData.priceDetails=lPDet;const selectedVehicle=document.querySelector('.vehicle.selected');if(selectedVehicle){bookingData.vehicle={type:selectedVehicle.querySelector('span').textContent,id:selectedVehicle.id};}const bookingDetails=fBD(bookingData);document.getElementById("booking-details").value=bookingDetails;localStorage.setItem("bookingData",JSON.stringify(bookingData));try{const form=document.getElementById("booking-form");const response=await fetch(form.action,{method:'POST',body:new FormData(form),headers:{Accept:'application/json'}});if(response.ok){console.log("Formspree success:",await response.json());}else{console.error("Formspree error:",await response.text());}}catch(error){console.error("Formspree submission error:",error);}document.getElementById('sm').style.display='block';const paymentData={price:parseFloat(bookingData.price),email:bookingData.contact.email,description:`${bookingData.bookingType==="transfer"?"AIRPORT TRANSFER":bookingData.bookingType==="point-to-point"?"POINT-TO-POINT":"HOURLY"} Booking for ${bookingData.bookingDate} ${bookingData.bookingTime}`,fullBookingData:bookingData};const paymentResponse=await fetch("https://square-server.vercel.app/create-checkout-session",{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(paymentData)});if(!paymentResponse.ok){throw new Error(`Square checkout failed: ${await paymentResponse.text()}`);}const paymentResult=await paymentResponse.json();if(!paymentResult.url){throw new Error("No checkout URL received from Square");}window.location.href=paymentResult.url;}catch(error){console.error("Error during checkout process:",error);alert(`Error processing payment: ${error.message}`);hL();pIP=false;}}
+// Find and update the hS function to properly handle hourly pricing
+async function hS(e){
+  if(e && e.preventDefault){
+    e.preventDefault();
+  }
+  
+  if(pIP){
+    return void alert("Payment is already being processed. Please wait.");
+  }
+  
+  const bookingType = document.getElementById("booking-type").value;
+  
+  // Validation for passenger limits in transfer and point-to-point
+  if(bookingType === "transfer" || bookingType === "point-to-point"){
+    const passengersCount = parseInt(document.getElementById("passengers").value) || 0;
+    const kidsCount = parseInt(document.getElementById("kids").value) || 0;
+    const totalPassengers = passengersCount + kidsCount;
+    
+    if(totalPassengers > 4){
+      alert("Para " + (bookingType === "transfer" ? "Airport Transfer" : "Point-to-Point") + ", no hay vehículos disponibles para más de 4 pasajeros. Por favor reduzca el número de pasajeros.");
+      return;
+    }
+  }
+  
+  // Validation for airport transfers
+  if(bookingType === "transfer"){
+    const pickup = document.getElementById("pickup").value;
+    const dropoff = document.getElementById("dropoff").value;
+    
+    if(!isBNAAirport(pickup) && !isBNAAirport(dropoff)){
+      alert("For airport transfers, at least one address must be Nashville International Airport (BNA).");
+      return;
+    }
+    
+    // Check flight information for airport pickups
+    if(isBNAAirport(pickup)){
+      const airline = document.getElementById("airline").value.trim();
+      const flight = document.getElementById("flight").value.trim();
+      
+      if(!airline || !flight){
+        alert("Please provide your arrival flight information.");
+        return;
+      }
+    }
+    
+    // Check flight information for airport dropoffs
+    if(isBNAAirport(dropoff)){
+      const depAirline = document.getElementById("dep-airline").value.trim();
+      const depFlight = document.getElementById("dep-flight").value.trim();
+      
+      if(!depAirline || !depFlight){
+        alert("Please provide your departure flight information.");
+        return;
+      }
+    }
+  } else if(bookingType === "point-to-point"){
+    const pickup = document.getElementById("pickup").value;
+    const dropoff = document.getElementById("dropoff").value;
+    
+    if(!pickup || !dropoff){
+      alert("Please provide both pickup and dropoff points for Point-to-Point.");
+      return;
+    }
+  }
+  
+  pIP = true;
+  sL();
+  
+  try {
+    // Collect booking data
+    const bookingData = {
+      bookingType: document.getElementById("booking-type").value,
+      bookingDate: document.getElementById("pickup-date").value,
+      bookingTime: document.getElementById("pickup-time").value,
+      passengers: {
+        adults: document.getElementById("passengers").value,
+        kids: document.getElementById("kids").value,
+        total: parseInt(document.getElementById("passengers").value) + parseInt(document.getElementById("kids").value),
+        luggage: document.getElementById("luggage").value
+      },
+      contact: {
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value
+      }
+    };
+    
+    // Handle hourly bookings
+    if("hourly" === bookingData.bookingType){
+      bookingData.hourly = {
+        hours: document.getElementById("trip-hours").value
+      };
+      bookingData.pickup = document.getElementById("pickup").value;
+      bookingData.dropoff = "";
+      bookingData.itinerary = document.getElementById("hourly-itinerary").value;
+    } else {
+      // Handle transfer or point-to-point bookings
+      bookingData.transfer = {
+        pickup: document.getElementById("pickup").value,
+        dropoff: document.getElementById("dropoff").value
+      };
+      
+      if(bookingData.bookingType === "transfer"){
+        if(isBNAAirport(bookingData.transfer.pickup)){
+          bookingData.flightInfo = {
+            type: "arrival",
+            airline: document.getElementById("airline").value,
+            flightNumber: document.getElementById("flight").value,
+            flightTime: document.getElementById("arrival-time").value
+          };
+        }
+        
+        if(isBNAAirport(bookingData.transfer.dropoff)){
+          bookingData.departureInfo = {
+            type: "departure",
+            airline: document.getElementById("dep-airline").value,
+            flightNumber: document.getElementById("dep-flight").value,
+            flightTime: document.getElementById("departure-time").value
+          };
+        }
+      }
+      
+      bookingData.specialRequest = document.getElementById("transfer-special-request").value;
+      bookingData.stops = [];
+    }
+    
+    // Get price from the checkout button attribute
+    let price = document.getElementById("checkout-button").getAttribute("data-price");
+    
+    // For hourly bookings, calculate price if it's not set
+    if (bookingData.bookingType === "hourly" && (!price || price === "0.00")) {
+      const hours = parseInt(document.getElementById("trip-hours").value) || 3;
+      const hourlyRate = PR.HR; // 95.00
+      price = (hours * hourlyRate).toFixed(2);
+      // Make sure to update the button attribute
+      document.getElementById("checkout-button").setAttribute("data-price", price);
+    }
+    
+    bookingData.price = price;
+    bookingData.priceDetails = lPDet;
+    
+    // Get selected vehicle
+    const selectedVehicle = document.querySelector('.vehicle.selected');
+    if(selectedVehicle){
+      bookingData.vehicle = {
+        type: selectedVehicle.querySelector('span').textContent,
+        id: selectedVehicle.id
+      };
+    }
+    
+    // Format booking details
+    const bookingDetails = fBD(bookingData);
+    document.getElementById("booking-details").value = bookingDetails;
+    
+    // Store booking data in localStorage
+    localStorage.setItem("bookingData", JSON.stringify(bookingData));
+    
+    // Send data to Formspree
+    try {
+      const form = document.getElementById("booking-form");
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: {
+          Accept: 'application/json'
+        }
+      });
+      
+      if(response.ok){
+        console.log("Formspree success:", await response.json());
+      } else {
+        console.error("Formspree error:", await response.text());
+      }
+    } catch(error){
+      console.error("Formspree submission error:", error);
+    }
+    
+    // Show success message
+    document.getElementById('sm').style.display = 'block';
+    
+    // Prepare data for Square payment
+    const paymentData = {
+      price: parseFloat(bookingData.price),
+      email: bookingData.contact.email,
+      description: `${bookingData.bookingType === "transfer" ? "AIRPORT TRANSFER" : bookingData.bookingType === "point-to-point" ? "POINT-TO-POINT" : "HOURLY"} Booking for ${bookingData.bookingDate} ${bookingData.bookingTime}`,
+      fullBookingData: bookingData
+    };
+    
+    // Send request to Square API
+    const paymentResponse = await fetch("https://square-server.vercel.app/create-checkout-session", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(paymentData)
+    });
+    
+    if(!paymentResponse.ok){
+      throw new Error(`Square checkout failed: ${await paymentResponse.text()}`);
+    }
+    
+    const paymentResult = await paymentResponse.json();
+    
+    if(!paymentResult.url){
+      throw new Error("No checkout URL received from Square");
+    }
+    
+    // Redirect to Square checkout
+    window.location.href = paymentResult.url;
+  } catch(error){
+    console.error("Error during checkout process:", error);
+    alert(`Error processing payment: ${error.message}`);
+    hL();
+    pIP = false;
+  }
+}
+
+// Update the updateFixedHourlyPrice function to ensure the checkout button price is properly set
+function updateFixedHourlyPrice() {
+  const hours = parseInt(document.getElementById("trip-hours").value) || 3;
+  const hourlyRate = PR.HR;
+  const total = hours * hourlyRate;
+  
+  document.getElementById("fixed-hours-display").textContent = hours;
+  document.getElementById("fixed-rate").textContent = hourlyRate.toFixed(2);
+  document.getElementById("fixed-price").textContent = (hours * hourlyRate).toFixed(2);
+  document.getElementById("fixed-total").textContent = total.toFixed(2);
+  
+  // Ensure the checkout button's data-price attribute is updated
+  if (document.getElementById("checkout-button")) {
+    document.getElementById("checkout-button").setAttribute("data-price", total.toFixed(2));
+  }
+  
+  // Also update lPDet to include the correct price
+  lPDet = {
+    baseFare: hours * hourlyRate,
+    total: total,
+    details: {
+      hours: hours,
+      hourlyRate: hourlyRate
+    }
+  };
+  
+  console.log("Updated hourly price:", total.toFixed(2));
+}
+
+// Update the adjustDuration function to ensure proper price updates
+function adjustDuration(e) {
+  const hourInput = document.getElementById("trip-hours");
+  const hoursDisplay = document.getElementById("hours-display");
+  let hours = parseInt(hourInput.value) || 3;
+  
+  hours = Math.max(3, hours + e);
+  hourInput.value = hours;
+  hoursDisplay.textContent = hours;
+  
+  const activeButtonId = e < 0 ? "decrease-btn" : "increase-btn";
+  document.getElementById("decrease-btn").classList.remove("active");
+  document.getElementById("increase-btn").classList.remove("active");
+  document.getElementById(activeButtonId).classList.add("active");
+  
+  setTimeout(() => {
+    document.getElementById(activeButtonId).classList.remove("active");
+  }, 300);
+  
+  // Update the price immediately
+  updateFixedHourlyPrice();
+  
+  // Make sure checkout button is visible when adjusting duration
+  if (document.querySelector(".vehicle.selected")) {
+    document.getElementById("checkout-button").classList.remove("hidden");
+  }
+}
 function sPCC(){return false;}
 function initAC(){if(typeof google==='undefined'||typeof google.maps==='undefined'){setTimeout(initAC,2e3);return;}try{mTNB=new google.maps.LatLngBounds(new google.maps.LatLng(35.5,-87.5),new google.maps.LatLng(36.5,-85.5));iACF(document.getElementById('pickup'));iACF(document.getElementById('dropoff'));aPL();setupACL();}catch(e){[document.getElementById('pickup'),document.getElementById('dropoff')].forEach(e=>{e&&e.addEventListener('change',dMU);});}}
 function cAT(e){return['airport','bna','flight','terminal'].some(t=>e.includes(t))}
