@@ -381,7 +381,169 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, 1000);
 });
-function iACF(e){if (!e) return;try {e.setAttribute("autocomplete", "off");e.setAttribute("autocorrect", "off");e.setAttribute("autocapitalize", "off");e.setAttribute("spellcheck", "false");let t = new google.maps.places.Autocomplete(e, {bounds: mTNB,strictBounds: true,componentRestrictions: {country: 'us'},fields: ['address_components', 'geometry', 'name', 'formatted_address', 'types']});t.addListener("place_changed", function() {const n = t.getPlace();if (!n || !n.address_components) {dMU();checkAirportAddressStatus();tAF();return;}checkAirportAddressStatus();tAF();dMU();});e.addEventListener('input', function() {checkAirportAddressStatus();dMU();});} catch (t) {console.error("Error setting up autocomplete:", t);e.addEventListener('change', dMU);}}
+function iACF(e) {
+  if (!e) {
+    console.warn("iACF called with null element");
+    return;
+  }
+  
+  // Detectar si estamos en un dispositivo móvil
+  const isMobile = window.innerWidth < 768;
+  console.log(`Setting up autocomplete for element ${e.id || 'unknown'} on ${isMobile ? 'mobile' : 'desktop'}`);
+  
+  try {
+    // Configuración básica de atributos para mejorar la experiencia de usuario
+    e.setAttribute("autocomplete", "off");
+    e.setAttribute("autocorrect", "off");
+    e.setAttribute("autocapitalize", "off");
+    e.setAttribute("spellcheck", "false");
+    
+    // Añadir atributos específicos para móviles para mejorar el comportamiento del teclado
+    if (isMobile) {
+      e.setAttribute("inputmode", "text");
+      e.setAttribute("enterkeyhint", "done");
+    }
+    
+    // Verificar si Google Maps está disponible
+    if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.places === 'undefined') {
+      console.warn("Google Maps API not fully loaded yet, setting up fallback listeners");
+      e.addEventListener('change', function() {
+        console.log(`Input changed via fallback for ${e.id || 'unknown'}`);
+        dMU();
+        checkAirportAddressStatus();
+        tAF();
+      });
+      
+      // Intentar configurar de nuevo después de un tiempo si aún no está disponible
+      setTimeout(function() {
+        if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.places !== 'undefined') {
+          console.log("Google Maps now available, retry autocomplete setup");
+          setupAutocomplete();
+        } else {
+          console.error("Google Maps still not available after delay");
+        }
+      }, 2000);
+      
+      return;
+    }
+    
+    function setupAutocomplete() {
+      // Verificar si ya tiene autocomplete configurado
+      if (e.hasAttribute("data-has-autocomplete")) {
+        console.log(`Autocomplete already set up for ${e.id || 'unknown'}`);
+        return;
+      }
+      
+      // Asegurarse de que mTNB está definido
+      if (!mTNB) {
+        console.log("mTNB not defined, creating default bounds for Nashville area");
+        mTNB = new google.maps.LatLngBounds(
+          new google.maps.LatLng(35.5, -87.5),
+          new google.maps.LatLng(36.5, -85.5)
+        );
+      }
+      
+      // Configurar opciones específicas para móviles
+      const autocompleteOptions = {
+        bounds: mTNB,
+        strictBounds: true,
+        componentRestrictions: {country: 'us'},
+        fields: ['address_components', 'geometry', 'name', 'formatted_address', 'types']
+      };
+      
+      // En móviles, limitar los resultados para mejor rendimiento
+      if (isMobile) {
+        autocompleteOptions.types = ['address'];
+      }
+      
+      console.log(`Creating autocomplete for ${e.id || 'unknown'} with options:`, autocompleteOptions);
+      
+      // Crear el objeto Autocomplete
+      let autocomplete = new google.maps.places.Autocomplete(e, autocompleteOptions);
+      
+      // Manejar el evento place_changed
+      autocomplete.addListener("place_changed", function() {
+        console.log(`Place changed for ${e.id || 'unknown'}`);
+        const place = autocomplete.getPlace();
+        
+        if (!place || !place.address_components) {
+          console.warn("Invalid place selected or place without address components");
+          dMU();
+          checkAirportAddressStatus();
+          tAF();
+          return;
+        }
+        
+        // Registro adicional para depuración
+        console.log(`Selected place: ${place.formatted_address}`);
+        
+        // En dispositivos móviles, forzar blur para cerrar el teclado virtual
+        if (isMobile) {
+          e.blur();
+        }
+        
+        // Actualizar estado y UI
+        checkAirportAddressStatus();
+        tAF();
+        
+        // Usar setTimeout para asegurar que el valor del campo se actualice primero
+        setTimeout(function() {
+          console.log("Updating map after place selection");
+          dMU();
+        }, 100);
+      });
+      
+      // Agregar event listener para input para manejar cambios manuales
+      e.addEventListener('input', function() {
+        console.log(`Input change detected for ${e.id || 'unknown'}`);
+        checkAirportAddressStatus();
+        
+        // No llamar a dMU directamente, usar debounce para mejorar rendimiento
+        if (typeof debounceMapUpdate === 'function') {
+          debounceMapUpdate(dMU, isMobile ? 1500 : 1000);
+        } else {
+          dMU();
+        }
+      });
+      
+      // Marcar que el elemento ya tiene autocomplete configurado
+      e.setAttribute("data-has-autocomplete", "true");
+      
+      // En dispositivos móviles, agregar listener para el evento focus
+      if (isMobile) {
+        e.addEventListener('focus', function() {
+          console.log(`Focus event on ${e.id || 'unknown'}`);
+          
+          // Scroll a este elemento después de un breve retraso
+          setTimeout(function() {
+            e.scrollIntoView({behavior: 'smooth', block: 'center'});
+          }, 300);
+        });
+      }
+    }
+    
+    // Configurar autocomplete
+    setupAutocomplete();
+    
+  } catch (error) {
+    console.error(`Error setting up autocomplete for ${e.id || 'unknown'}:`, error);
+    console.error("Error details:", error.message);
+    console.error("Stack trace:", error.stack);
+    
+    // Configurar listeners de fallback
+    e.addEventListener('change', function() {
+      console.log(`Change event (fallback) on ${e.id || 'unknown'}`);
+      dMU();
+      checkAirportAddressStatus();
+      tAF();
+    });
+    
+    e.addEventListener('blur', function() {
+      console.log(`Blur event (fallback) on ${e.id || 'unknown'}`);
+      setTimeout(dMU, 300);
+    });
+  }
+}
 function showDefaultMap(){const e=document.getElementById("map-frame");if(!e)return;document.getElementById("map-loading").style.opacity="1",e.src="https://www.google.com/maps/embed/v1/place?key=AIzaSyAbzaG5x-Vk6dk_MhIcz565gIEnNYDaNTE&q=Nashville,Tennessee&zoom=10",e.onload=()=>{document.getElementById("map-loading").style.opacity="0",e.style.opacity="1"},setTimeout(()=>{document.getElementById("map-loading").style.opacity="0",e.style.opacity="1"},3e3)}window.addEventListener("DOMContentLoaded", () => {initMapDisplay();document.getElementById("pickup-date").min = (new Date).toISOString().split("T")[0];document.querySelector(".booking-type-selector").style.display = "flex";"transfer" === document.getElementById("booking-type").value ? sBT("transfer") : sBT("hourly");document.getElementById("trip-type") && (document.getElementById("trip-type").addEventListener("change", tTT), tTT());document.getElementById("pickup").addEventListener("change", dMU);document.getElementById("dropoff").addEventListener("change", dMU);document.getElementById("location-type").addEventListener("change", function() { tAF() });document.getElementById("trip-hours").value = 3;document.getElementById("hours-display").textContent = 3;localStorage.removeItem('paymentCompleted');localStorage.removeItem('paymentInProgress');localStorage.removeItem('finalRedirect');localStorage.removeItem('squareRedirectTime');sessionStorage.removeItem('paymentInitiated');sessionStorage.removeItem('paymentStartTime');sessionStorage.removeItem('paymentCompleted');sessionStorage.removeItem('pageViewedAfterPayment');document.cookie = "payment_complete=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";document.cookie = "payment_started=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";document.cookie = "target_redirect=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";if (document.getElementById("booking-type").value === "hourly") {document.getElementById("luggage-container").style.display = "none";}document.getElementById("hourly-btn").addEventListener("click", function() {document.getElementById("luggage-container").style.display = "none"});document.getElementById("transfer-btn").addEventListener("click", function() {document.getElementById("luggage-container").style.display = "block";});setTimeout(function() { typeof google === 'undefined' || typeof google.maps === 'undefined' && initAC() }, 500);});
 // Find and update the hS function to properly handle hourly pricing
 async function hS(e){
