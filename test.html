@@ -713,7 +713,164 @@ function initMapDisplay(){const mapFrame = document.getElementById("map-frame");
 function ensureGoogleMapsLoaded(){if (typeof google === 'undefined' || typeof google.maps === 'undefined') {console.log("Google Maps API not loaded yet, retrying...");setTimeout(ensureGoogleMapsLoaded, 1000);return;}console.log("Google Maps API loaded successfully");if (typeof initAC === 'function') {try {initAC();} catch (e) {console.error("Error initializing autocomplete:", e);}}}
 function toggleStopContainer(){const bookingType = document.getElementById("booking-type").value;const stopContainer = document.getElementById("add-stop-container");stopContainer.style.display = (bookingType === "transfer" || bookingType === "point-to-point") ? "block" : "none";}document.addEventListener("DOMContentLoaded", () => {const addStopContainer = document.getElementById("add-stop-container");const existingButtons = addStopContainer.querySelectorAll("button");existingButtons.forEach(button => button.remove());const addStopButton = document.createElement("button");addStopButton.textContent = "Add Stop";addStopButton.type = "button";addStopButton.onclick = addStop;addStopContainer.appendChild(addStopButton);});
 function addStop(){if(typeof window.stopCount==='undefined'){window.stopCount=0;}window.stopCount++;const stopContainer=document.getElementById("stops-container");if(!stopContainer){console.error("Stops container not found");return;}const stopDiv=document.createElement("div");stopDiv.classList.add("stop");stopDiv.setAttribute("id",`stop-${window.stopCount}`);const stopInput=document.createElement("input");stopInput.setAttribute("type","text");stopInput.setAttribute("class","autocomplete");stopInput.setAttribute("name",`stop-${window.stopCount}`);stopInput.setAttribute("placeholder",`Stop ${window.stopCount}`);stopInput.addEventListener("input",function(){if(typeof dMU==='function')dMU();});const deleteButton=document.createElement("button");deleteButton.innerHTML="<i class='fas fa-times'></i>";deleteButton.classList.add("remove-button");deleteButton.type="button";deleteButton.onclick=function(){stopDiv.remove();if(typeof dMU==='function')dMU();};stopDiv.appendChild(stopInput);stopDiv.appendChild(deleteButton);stopContainer.appendChild(stopDiv);if(typeof iACF==='function'){try{iACF(stopInput);}catch(e){console.error("Error initializing autocomplete for stop:",e);}}console.log(`Added stop #${window.stopCount}`);}
-async function uM(){console.log("uM function called - updating map and calculating prices");const loadingEl=document.getElementById("map-loading");const mapFrame=document.getElementById("map-frame");const pickup=document.getElementById("pickup").value;const bookingType=document.getElementById("booking-type").value;if(loadingEl)loadingEl.style.opacity="1";if(mapFrame)mapFrame.style.opacity="0.6";if(bookingType==="hourly"){if(!pickup){showDefaultMap();return;}const encodedPickup=encodeURIComponent(pickup.trim());try{const mapSrc=`https://www.google.com/maps/embed/v1/place?key=AIzaSyAbzaG5x-Vk6dk_MhIcz565gIEnNYDaNTE&q=${encodedPickup}&zoom=12`;if(mapFrame){mapFrame.src=mapSrc;mapFrame.onload=function(){if(loadingEl)loadingEl.style.opacity="0";mapFrame.style.opacity="1"};}const hourlyPrice=await cHP();uPD(hourlyPrice);}catch(e){console.error("Map update error:",e);showDefaultMap();}return;}const dropoff=document.getElementById("dropoff").value;if(!pickup||!dropoff){console.log("Missing pickup or dropoff - showing default map");showDefaultMap();const priceContainer=document.getElementById("price-breakdown");if(priceContainer&&document.getElementById("price-loading")){priceContainer.innerHTML='';}return;}const stops=[...document.querySelectorAll("#stops-container .autocomplete")].map(input=>input.value).filter(val=>val.trim()!=="");const encodedPickup=encodeURIComponent(pickup.trim());const encodedDropoff=encodeURIComponent(dropoff.trim());const encodedStops=stops.map(stop=>encodeURIComponent(stop.trim())).join('%7C');console.log(`Updating map from ${pickup} to ${dropoff}`);try{const mapSrc=`https://www.google.com/maps/embed/v1/directions?key=AIzaSyAbzaG5x-Vk6dk_MhIcz565gIEnNYDaNTE&origin=${encodedPickup}&destination=${encodedDropoff}${encodedStops?`&waypoints=${encodedStops}`:''}&mode=driving`;if(mapFrame){mapFrame.src=mapSrc;mapFrame.onload=function(){if(loadingEl)loadingEl.style.opacity="0";mapFrame.style.opacity="1"};}if(["transfer","point-to-point"].includes(bookingType)){try{console.log("Calculating price for route...");const priceDetails=await cTP(pickup,dropoff,stops,document.getElementById("passengers").value);console.log("Price calculation successful:",priceDetails);uPD(priceDetails);}catch(priceError){console.error("Error calculating price:",priceError);const priceContainer=document.getElementById("price-breakdown");if(priceContainer){priceContainer.innerHTML=`<div class="price-details"><div class="price-item" style="color: #e74c3c;"><span><i class="fas fa-exclamation-circle"></i> Unable to calculate price:</span><span>${priceError.message||'Please check your route and try again'}</span></div></div>`;}}}}catch(e){console.error("Map update error:",e);showDefaultMap();}}
+async function uM() {
+  const isMobile = window.innerWidth < 768;
+  console.log("uM function called - updating map and calculating prices on " + 
+    (isMobile ? "mobile device" : "desktop"), "screen width:", window.innerWidth);
+  
+  const loadingEl = document.getElementById("map-loading");
+  const mapFrame = document.getElementById("map-frame");
+  const mapContainer = document.getElementById("map-container");
+  const pickup = document.getElementById("pickup").value;
+  const bookingType = document.getElementById("booking-type").value;
+  
+  // Log map container dimensions for debugging
+  if (mapContainer) {
+    const rect = mapContainer.getBoundingClientRect();
+    console.log("Map container dimensions:", {
+      width: rect.width,
+      height: rect.height,
+      visible: rect.width > 0 && rect.height > 0
+    });
+  }
+  
+  // Show loading indicators
+  if (loadingEl) loadingEl.style.opacity = "1";
+  if (mapFrame) mapFrame.style.opacity = "0.6";
+  
+  // Handle hourly booking type
+  if (bookingType === "hourly") {
+    if (!pickup) {
+      console.log("No pickup location for hourly booking, showing default map");
+      showDefaultMap();
+      return;
+    }
+    
+    const encodedPickup = encodeURIComponent(pickup.trim());
+    try {
+      // Adjust zoom level for mobile devices
+      const zoom = isMobile ? "11" : "12";
+      const mapSrc = `https://www.google.com/maps/embed/v1/place?key=AIzaSyAbzaG5x-Vk6dk_MhIcz565gIEnNYDaNTE&q=${encodedPickup}&zoom=${zoom}`;
+      
+      console.log("Setting hourly map source:", mapSrc);
+      
+      if (mapFrame) {
+        // Force reload on mobile to prevent caching issues
+        if (isMobile) {
+          mapFrame.src = "about:blank";
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        mapFrame.src = mapSrc;
+        
+        // Set up load handler
+        mapFrame.onload = function() {
+          console.log("Map frame loaded successfully");
+          if (loadingEl) loadingEl.style.opacity = "0";
+          mapFrame.style.opacity = "1";
+        };
+        
+        // Fallback in case onload doesn't fire
+        setTimeout(() => {
+          console.log("Map load timeout reached, finishing load sequence");
+          if (loadingEl) loadingEl.style.opacity = "0";
+          mapFrame.style.opacity = "1";
+        }, 3000);
+      }
+      
+      // Calculate hourly price
+      try {
+        const hourlyPrice = await cHP();
+        uPD(hourlyPrice);
+      } catch (priceError) {
+        console.error("Error calculating hourly price:", priceError);
+      }
+    } catch (e) {
+      console.error("Map update error for hourly booking:", e);
+      showDefaultMap();
+    }
+    return;
+  }
+  
+  // Handle transfer or point-to-point booking types
+  const dropoff = document.getElementById("dropoff").value;
+  if (!pickup || !dropoff) {
+    console.log("Missing pickup or dropoff - showing default map");
+    showDefaultMap();
+    const priceContainer = document.getElementById("price-breakdown");
+    if (priceContainer && document.getElementById("price-loading")) {
+      priceContainer.innerHTML = '';
+    }
+    return;
+  }
+  
+  // Process stops
+  const stops = [...document.querySelectorAll("#stops-container .autocomplete")]
+    .map(input => input.value)
+    .filter(val => val.trim() !== "");
+  
+  console.log("Stops detected:", stops.length > 0 ? stops : "none");
+  
+  // Prepare URL components
+  const encodedPickup = encodeURIComponent(pickup.trim());
+  const encodedDropoff = encodeURIComponent(dropoff.trim());
+  const encodedStops = stops.map(stop => encodeURIComponent(stop.trim())).join('%7C');
+  
+  console.log(`Updating map from ${pickup} to ${dropoff}`);
+  
+  try {
+    // Build directions URL with proper encoding
+    const mapSrc = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyAbzaG5x-Vk6dk_MhIcz565gIEnNYDaNTE&origin=${encodedPickup}&destination=${encodedDropoff}${encodedStops ? `&waypoints=${encodedStops}` : ''}&mode=driving`;
+    
+    console.log("Setting directions map source:", mapSrc);
+    
+    if (mapFrame) {
+      // Force reload on mobile to prevent caching issues
+      if (isMobile) {
+        mapFrame.src = "about:blank";
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      // Set the iframe source to the directions URL
+      mapFrame.src = mapSrc;
+      
+      // Set up load handler
+      mapFrame.onload = function() {
+        console.log("Directions map loaded successfully");
+        if (loadingEl) loadingEl.style.opacity = "0";
+        mapFrame.style.opacity = "1";
+      };
+      
+      // Fallback in case onload doesn't fire
+      setTimeout(() => {
+        console.log("Map load timeout reached, finishing load sequence");
+        if (loadingEl) loadingEl.style.opacity = "0";
+        mapFrame.style.opacity = "1";
+      }, 3000);
+    }
+    
+    // Calculate price for transfer or point-to-point
+    if (["transfer", "point-to-point"].includes(bookingType)) {
+      try {
+        console.log("Calculating price for route...");
+        const priceDetails = await cTP(pickup, dropoff, stops, document.getElementById("passengers").value);
+        console.log("Price calculation successful:", priceDetails);
+        uPD(priceDetails);
+      } catch (priceError) {
+        console.error("Error calculating price:", priceError);
+        const priceContainer = document.getElementById("price-breakdown");
+        if (priceContainer) {
+          priceContainer.innerHTML = `<div class="price-details"><div class="price-item" style="color: #e74c3c;"><span><i class="fas fa-exclamation-circle"></i> Unable to calculate price:</span><span>${priceError.message || 'Please check your route and try again'}</span></div></div>`;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Map update error:", e);
+    console.error("Error details:", e.message);
+    console.error("Stack trace:", e.stack);
+    showDefaultMap();
+  }
+}
 function cRD(origin, destination, stops = []) {
   try {
     const directionsService = new google.maps.DirectionsService();
