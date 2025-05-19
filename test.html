@@ -110,7 +110,7 @@ html[data-booking-type="hourly"] #luggage-container {display: none !important;}
 <script>
 let routeData = null; // Almacena los datos originales de la ruta de Google Maps
 let stopCount = 0;
-let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:5,HR:95,MR:95/60},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
+let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:5,HR:95,MR:95/60,SUV_BF:24,SUV_RM:3.75,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 let debounceTimer;
 function debounceMapUpdate(func, wait) {clearTimeout(debounceTimer);debounceTimer = setTimeout(func, wait);}
 function isBNAAirport(a){if(!a)return!1;a=a.toLowerCase();return a.includes("bna")||a.includes("nashville int")||a.includes("nashville airport")}
@@ -764,7 +764,12 @@ async function hS(e){
 // Update the updateFixedHourlyPrice function to ensure the checkout button price is properly set
 function updateFixedHourlyPrice() {
   const hours = parseInt(document.getElementById("trip-hours").value) || 3;
-  const hourlyRate = PR.HR;
+  
+  // Obtener el vehículo seleccionado
+  const selectedVehicle = document.querySelector('.vehicle.selected');
+  const isSUV = selectedVehicle && selectedVehicle.id === 'cadillac';
+  const hourlyRate = isSUV ? PR.SUV_HR : PR.HR;
+  
   const total = hours * hourlyRate;
   
   document.getElementById("fixed-hours-display").textContent = hours;
@@ -772,12 +777,10 @@ function updateFixedHourlyPrice() {
   document.getElementById("fixed-price").textContent = (hours * hourlyRate).toFixed(2);
   document.getElementById("fixed-total").textContent = total.toFixed(2);
   
-  // Ensure the checkout button's data-price attribute is updated
   if (document.getElementById("checkout-button")) {
     document.getElementById("checkout-button").setAttribute("data-price", total.toFixed(2));
   }
   
-  // Also update lPDet to include the correct price
   lPDet = {
     baseFare: hours * hourlyRate,
     total: total,
@@ -790,33 +793,6 @@ function updateFixedHourlyPrice() {
   console.log("Updated hourly price:", total.toFixed(2));
 }
 
-// Update the adjustDuration function to ensure proper price updates
-function adjustDuration(e) {
-  const hourInput = document.getElementById("trip-hours");
-  const hoursDisplay = document.getElementById("hours-display");
-  let hours = parseInt(hourInput.value) || 3;
-  
-  hours = Math.max(3, hours + e);
-  hourInput.value = hours;
-  hoursDisplay.textContent = hours;
-  
-  const activeButtonId = e < 0 ? "decrease-btn" : "increase-btn";
-  document.getElementById("decrease-btn").classList.remove("active");
-  document.getElementById("increase-btn").classList.remove("active");
-  document.getElementById(activeButtonId).classList.add("active");
-  
-  setTimeout(() => {
-    document.getElementById(activeButtonId).classList.remove("active");
-  }, 300);
-  
-  // Update the price immediately
-  updateFixedHourlyPrice();
-  
-  // Make sure checkout button is visible when adjusting duration
-  if (document.querySelector(".vehicle.selected")) {
-    document.getElementById("checkout-button").classList.remove("hidden");
-  }
-}
 function sPCC(){return false;}
 function initAC(){if(typeof google==='undefined'||typeof google.maps==='undefined'){setTimeout(initAC,2e3);return;}try{mTNB=new google.maps.LatLngBounds(new google.maps.LatLng(35.5,-87.5),new google.maps.LatLng(36.5,-85.5));iACF(document.getElementById('pickup'));iACF(document.getElementById('dropoff'));aPL();setupACL();}catch(e){[document.getElementById('pickup'),document.getElementById('dropoff')].forEach(e=>{e&&e.addEventListener('change',dMU);});}}
 function cAT(e){return['airport','bna','flight','terminal'].some(t=>e.includes(t))}
@@ -824,6 +800,7 @@ function adjustDuration(e) {
   const hourInput = document.getElementById("trip-hours");
   const hoursDisplay = document.getElementById("hours-display");
   let hours = parseInt(hourInput.value) || 3;
+  
   hours = Math.max(3, hours + e);
   hourInput.value = hours;
   hoursDisplay.textContent = hours;
@@ -837,14 +814,20 @@ function adjustDuration(e) {
     document.getElementById(activeButtonId).classList.remove("active");
   }, 300);
   
-  // Actualizar el precio fijo inmediatamente
-  updateFixedHourlyPrice();
+  // Obtener el vehículo seleccionado para usar la tarifa correcta
+  const selectedVehicle = document.querySelector('.vehicle.selected');
+  const isSUV = selectedVehicle && selectedVehicle.id === 'cadillac';
+  const hourlyRate = isSUV ? PR.SUV_HR : PR.HR;
   
-  // Crear los detalles del precio para el sistema interno 
-  // (sin mostrar un segundo elemento en la interfaz)
-  const hourlyRate = PR.HR;
   const total = hours * hourlyRate;
   
+  // Actualizar el precio fijo
+  document.getElementById("fixed-hours-display").textContent = hours;
+  document.getElementById("fixed-rate").textContent = hourlyRate.toFixed(2);
+  document.getElementById("fixed-price").textContent = (hours * hourlyRate).toFixed(2);
+  document.getElementById("fixed-total").textContent = total.toFixed(2);
+  
+  // Crear los detalles del precio para el sistema interno
   const priceDetails = {
     baseFare: hours * hourlyRate,
     total: total,
@@ -857,13 +840,13 @@ function adjustDuration(e) {
   // Guardar los detalles del precio
   lPDet = priceDetails;
   
-  // NO actualizar price-breakdown, solo usar fixed-hourly-price
-  // Eliminar o comentar este bloque para evitar la duplicación:
-  // const priceContainer = document.getElementById("price-breakdown");
-  // priceContainer.innerHTML = `...`;
-  
   // Configurar el precio en el botón de pago
   document.getElementById("checkout-button").setAttribute("data-price", total.toFixed(2));
+  
+  // Asegurar que el botón esté visible
+  if (document.querySelector(".vehicle.selected")) {
+    document.getElementById("checkout-button").classList.remove("hidden");
+  }
 }
 function cAHAT(){return cAT(document.getElementById("pickup").value.toLowerCase()) || cAT(document.getElementById("dropoff").value.toLowerCase());}
 function setupACL(){const inputs = [document.getElementById("pickup"), document.getElementById("dropoff")];inputs.forEach(input => {if(input) {input.addEventListener('change', function() {cAAFAT();checkAirportAddressStatus();});}});}
@@ -1306,13 +1289,23 @@ async function cTP(origin, destination, stops, passengers) {
     
     console.log("Adjusted duration text:", adjustedDurationText);
     
+    // Get the selected vehicle
+    const selectedVehicle = document.querySelector('.vehicle.selected');
+    const isVehicleSelected = selectedVehicle !== null;
+    const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
+    
+    // Apply the correct rates based on vehicle type
+    const baseFare = isSUV ? PR.SUV_BF : PR.BF;
+    const ratePerMile = isSUV ? PR.SUV_RM : PR.RM;
+    const ratePerMinute = isSUV ? PR.SUV_PMN : PR.PMN;
+    
     const passengersAdults = parseInt(passengers) || 0;
     const passengersKids = parseInt(document.getElementById("kids").value) || 0;
-    const distanceCost = totalMiles * PR.RM;
+    const distanceCost = totalMiles * ratePerMile;
     const passengerCost = (document.getElementById("booking-type").value === "hourly") ? 0 : (passengersAdults + passengersKids) * PR.PP;
-    const timeCost = totalMinutes * PR.PMN; // Using adjusted time for cost calculation
+    const timeCost = totalMinutes * ratePerMinute; // Using adjusted time for cost calculation
     
-    let subtotal = PR.BF + distanceCost + passengerCost + timeCost;
+    let subtotal = baseFare + distanceCost + passengerCost + timeCost;
     const airportFee = (document.getElementById("booking-type").value === "transfer") ? PR.AF : 0;
     subtotal += airportFee;
     
@@ -1322,7 +1315,7 @@ async function cTP(origin, destination, stops, passengers) {
     const total = pretaxTotal + tax;
     
     return {
-      baseFare: PR.BF,
+      baseFare: baseFare,
       distanceCost: distanceCost,
       timeCost: timeCost,
       passengerCost: passengerCost,
@@ -1338,7 +1331,7 @@ async function cTP(origin, destination, stops, passengers) {
         googleDistanceText: googleDistanceText,
         totalSeconds: adjustedTotalSeconds, // Use adjusted seconds
         totalMinutes: totalMinutes, // Use adjusted minutes
-        pricePerMinute: PR.PMN,
+        pricePerMinute: ratePerMinute,
         useTrafficTime: true,
         departureTime: departureTimeForRoute,
         arrivalTime: new Date(departureTimeForRoute.getTime() + (adjustedTotalSeconds * 1000)), // Adjusted arrival time
@@ -1375,12 +1368,10 @@ function uPD(priceDetails) {
         </div>
       </div>`;
   } else if (bookingType === "transfer" || bookingType === "point-to-point") {
-    // Get the adjusted duration text which includes the 2-minute buffer
     const originalDurationText = priceDetails.details.googleDurationText || "";
     const adjustedDurationText = priceDetails.details.adjustedDurationText || originalDurationText;
     const googleDistanceText = priceDetails.details.googleDistanceText || "";
-    
-    // REMOVED THE BLUE BOX THAT CONTAINED TRAVEL TIME, DISTANCE, AND PRICE PER MINUTE
+
     
     const serviceTitle = bookingType === "transfer" ? "Airport Transfer Pricing" : "Point-to-Point Pricing";
     
@@ -1427,22 +1418,109 @@ function uPD(priceDetails) {
 }
 function updateFixedHourlyPrice() {
   const hours = parseInt(document.getElementById("trip-hours").value) || 3;
-  const hourlyRate = PR.HR;
+  
+  const selectedVehicle = document.querySelector('.vehicle.selected');
+  const isSUV = selectedVehicle && selectedVehicle.id === 'cadillac';
+  const hourlyRate = isSUV ? PR.SUV_HR : PR.HR;
+  
   const total = hours * hourlyRate;
+  
   document.getElementById("fixed-hours-display").textContent = hours;
   document.getElementById("fixed-rate").textContent = hourlyRate.toFixed(2);
   document.getElementById("fixed-price").textContent = (hours * hourlyRate).toFixed(2);
   document.getElementById("fixed-total").textContent = total.toFixed(2);
+  
   if (document.getElementById("checkout-button")) {
     document.getElementById("checkout-button").setAttribute("data-price", total.toFixed(2));
   }
+  
+  lPDet = {
+    baseFare: hours * hourlyRate,
+    total: total,
+    details: {
+      hours: hours,
+      hourlyRate: hourlyRate
+    }
+  };
+  
+  console.log("Updated hourly price:", total.toFixed(2));
 }
 function aPL(){setupPassengerListeners();}
 function fBD(e){const noStopsMessage="  • Direct route with no stops",n=e.priceDetails||{},bookingTypeLabel="transfer"===e.bookingType?"AIRPORT TRANSFER":"HOURLY";let flightInfo="";if("transfer"===e.bookingType){e.flightInfo&&(flightInfo+=`\nArrival Flight Info: • Airline: ${e.flightInfo.airline} • Flight Number: ${e.flightInfo.flightNumber} • Flight Time: ${e.flightInfo.flightTime||"Not provided"}`);e.departureInfo&&(flightInfo+=`\nDeparture Flight Info:  • Airline: ${e.departureInfo.airline}  • Flight Number: ${e.departureInfo.flightNumber}  • Flight Time: ${e.departureInfo.flightTime||"Not provided"}`);}const o=n&&n.total?`Price Breakdown:- Base Fare: ${(n.baseFare||0).toFixed(2)}${n.distanceCost!==void 0?`• Distance Cost: ${n.distanceCost.toFixed(2)}\n`:""}${n.timeCost!==void 0?`• Time Cost: ${n.timeCost.toFixed(2)}\n`:""}${n.airportFee>0?`• Airport Fee: ${n.airportFee.toFixed(2)}\n`:""}- Service Fee: ${(n.serviceFee||0).toFixed(2)}- Tax: ${(n.tax||0).toFixed(2)}Total: ${(n.total||0).toFixed(2)}`:"";return`Booking ConfirmationDate: ${e.bookingDate||"N/A"}Time: ${e.bookingTime||"N/A"}Booking Type: ${bookingTypeLabel}${flightInfo}${"hourly"===e.bookingType?`Hours: ${e.hourly?.hours||"N/A"}Itinerary: ${e.itinerary||"N/A"}`:`Special Request: ${e.specialRequest||"N/A"}`}Pickup: ${e.pickup||e.transfer?.pickup||"N/A"}Dropoff: ${e.dropoff||e.transfer?.dropoff||"N/A"}Route:${noStopsMessage}${"hourly"!==e.bookingType?`Passengers: ${e.passengers?.total||1} (Adults: ${e.passengers?.adults||1}, Kids: ${e.passengers?.kids||0})`:""}Luggage: ${e.passengers?.luggage||0}Phone: ${e.contact?.phone||"N/A"}Email: ${e.contact?.email||"N/A"}Vehicle: ${e.vehicle?e.vehicle.type:"Not Selected"}${o}`;}
 function sV(){const errors=[];const bookingType=document.getElementById("booking-type").value;const fieldsToValidate={'pickup-date':'Pickup Date','pickup-time':'Pickup Time','pickup':'Pickup Point','phone':'Phone Number','email':'Email'};if(bookingType==="transfer"||bookingType==="point-to-point"){fieldsToValidate['dropoff']='Drop-off Point';fieldsToValidate['passengers']='Passengers';}for(let[fieldId,fieldName]of Object.entries(fieldsToValidate)){const field=document.getElementById(fieldId);if(!field||!field.value.trim()){errors.push(fieldName);if(field)field.classList.add("error-field");}else{field.classList.remove("error-field");}}if(bookingType==="transfer"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!isBNAAirport(pickup)&&!isBNAAirport(dropoff)){errors.push("At least one location must be Nashville International Airport (BNA)");document.getElementById("pickup").classList.add("error-field");document.getElementById("dropoff").classList.add("error-field");}}if(bookingType==="transfer"||bookingType==="point-to-point"){const passengersCount=parseInt(document.getElementById("passengers").value)||0;const kidsCount=parseInt(document.getElementById("kids").value)||0;const totalPassengers=passengersCount+kidsCount;if(totalPassengers>4){alert("Para "+(bookingType==="transfer"?"Airport Transfer":"Point-to-Point")+", vehicles are not available for more than 4 passengers. Please reduce the number of passengers.");document.getElementById("passengers").classList.add("error-field");document.getElementById("kids").classList.add("error-field");return false;}}if(bookingType==="point-to-point"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!pickup||!dropoff){alert("Please provide both pickup and dropoff points for Point-to-Point.");return false;}}const phone=document.getElementById("phone").value.trim();if(phone&&!/^\d{10}$/.test(phone)){errors.push("Valid 10-digit Phone Number");document.getElementById("phone").classList.add("error-field");}const email=document.getElementById("email").value.trim();if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){errors.push("Valid Email Address");document.getElementById("email").classList.add("error-field");}if(errors.length>0){alert("Please correct the following:\n\n"+errors.join("\n"));return false;}document.getElementById("vehicle-section").classList.remove("hidden");lVBPC();return true;}
 function tFF(){const e=document.getElementById("flight-type").value,t=document.getElementById("arrival-fields"),n=document.getElementById("departure-fields");t.style.display="arrival"===e?"block":"none",n.style.display="departure"===e?"block":"none"}
-function sV2(e){document.querySelectorAll(".vehicle").forEach(e=>e.classList.remove("selected"));const t=document.getElementById(e);t.classList.contains("vehicle-disabled")||(t.classList.add("selected"),document.getElementById("checkout-button").classList.remove("hidden"))}
-function lVBPC(){const passengersCount=parseInt(document.getElementById("passengers").value)||0;const kidsCount=parseInt(document.getElementById("kids").value)||0;const totalPassengers=passengersCount+kidsCount;const bookingType=document.getElementById("booking-type").value;const shouldApplyLimit=bookingType==="transfer"||bookingType==="point-to-point";const toyotaVehicle=document.getElementById("toyota");const cadillacVehicle=document.getElementById("cadillac");const checkoutButton=document.getElementById("checkout-button");const vehicleSection=document.getElementById("vehicle-section");toyotaVehicle.classList.remove("selected");cadillacVehicle.classList.remove("selected");checkoutButton.classList.add("hidden");if(shouldApplyLimit&&totalPassengers>4){toyotaVehicle.classList.add("vehicle-disabled");cadillacVehicle.classList.add("vehicle-disabled");if(!vehicleSection.classList.contains("hidden")){if(!document.getElementById("passenger-limit-warning")){const warningMessage=document.createElement("div");warningMessage.id="passenger-limit-warning";warningMessage.style.backgroundColor="#f44336";warningMessage.style.color="white";warningMessage.style.padding="10px";warningMessage.style.borderRadius="5px";warningMessage.style.marginBottom="15px";warningMessage.style.textAlign="center";warningMessage.innerHTML="<strong>Attention!</strong> For "+(bookingType==="transfer"?"Airport Transfer":"Point-to-Point")+", vehicles are not available for more than 4 passengers. Please reduce the number of passengers.";vehicleSection.insertBefore(warningMessage,vehicleSection.firstChild);}}}else{toyotaVehicle.classList.remove("vehicle-disabled");cadillacVehicle.classList.add("vehicle-disabled");const warningMessage=document.getElementById("passenger-limit-warning");if(warningMessage){warningMessage.remove();}}}
+function sV2(e) {
+  document.querySelectorAll(".vehicle").forEach(v => v.classList.remove("selected"));
+  const selectedVehicle = document.getElementById(e);
+  
+  if(!selectedVehicle.classList.contains("vehicle-disabled")) {
+    selectedVehicle.classList.add("selected");
+    document.getElementById("checkout-button").classList.remove("hidden");
+    
+    // Actualizar el precio según el tipo de vehículo seleccionado
+    const bookingType = document.getElementById("booking-type").value;
+    if(bookingType === "hourly") {
+      // Para reservas por hora, actualizar el precio fijo por hora
+      updateFixedHourlyPrice();
+    } else {
+      // Para transfer o point-to-point, recalcular el precio de la ruta
+      const pickup = document.getElementById("pickup").value;
+      const dropoff = document.getElementById("dropoff").value;
+      if(pickup && dropoff) {
+        // Obtener las paradas
+        const stops = [...document.querySelectorAll("#stops-container .autocomplete")]
+          .map(input => input.value)
+          .filter(val => val.trim() !== "");
+        
+        // Recalcular el precio con el vehículo seleccionado
+        dMU();
+      }
+    }
+  }
+}
+function lVBPC() {
+  const passengersCount = parseInt(document.getElementById("passengers").value) || 0;
+  const kidsCount = parseInt(document.getElementById("kids").value) || 0;
+  const totalPassengers = passengersCount + kidsCount;
+  const bookingType = document.getElementById("booking-type").value;
+  const shouldApplyLimit = bookingType === "transfer" || bookingType === "point-to-point";
+  const toyotaVehicle = document.getElementById("toyota");
+  const cadillacVehicle = document.getElementById("cadillac");
+  const checkoutButton = document.getElementById("checkout-button");
+  const vehicleSection = document.getElementById("vehicle-section");
+  
+  toyotaVehicle.classList.remove("selected");
+  cadillacVehicle.classList.remove("selected");
+  checkoutButton.classList.add("hidden");
+  
+  if (shouldApplyLimit && totalPassengers > 4) {
+    toyotaVehicle.classList.add("vehicle-disabled");
+    cadillacVehicle.classList.remove("vehicle-disabled");
+    
+    if (!vehicleSection.classList.contains("hidden")) {
+      if (!document.getElementById("passenger-limit-warning")) {
+        const warningMessage = document.createElement("div");
+        warningMessage.id = "passenger-limit-warning";
+        warningMessage.style.backgroundColor = "#f44336";
+        warningMessage.style.color = "white";
+        warningMessage.style.padding = "10px";
+        warningMessage.style.borderRadius = "5px";
+        warningMessage.style.marginBottom = "15px";
+        warningMessage.style.textAlign = "center";
+        warningMessage.innerHTML = "<strong>Attention!</strong> For " + (bookingType === "transfer" ? "Airport Transfer" : "Point-to-Point") + ", vehicles are not available for more than 4 passengers. Please reduce the number of passengers.";
+        vehicleSection.insertBefore(warningMessage, vehicleSection.firstChild);
+      }
+    }
+  } else {
+    toyotaVehicle.classList.remove("vehicle-disabled");
+    cadillacVehicle.classList.remove("vehicle-disabled");
+    
+    const warningMessage = document.getElementById("passenger-limit-warning");
+    if (warningMessage) {
+      warningMessage.remove();
+    }
+  }
+}
 function setupPassengerListeners() {const passengersField = document.getElementById("passengers");const kidsField = document.getElementById("kids");function updatePassengerLimit() {const bookingType = document.getElementById("booking-type").value;if (bookingType === "transfer" || bookingType === "point-to-point") {lVBPC();dMU();}}passengersField.addEventListener("input", updatePassengerLimit);passengersField.addEventListener("change", updatePassengerLimit);kidsField.addEventListener("input", updatePassengerLimit);kidsField.addEventListener("change", updatePassengerLimit);updatePassengerLimit();}
 function updateMapAndPrice() {dMU();}
 </script>
@@ -1548,9 +1626,9 @@ function updateMapAndPrice() {dMU();}
             <img src="https://cdn.prod.website-files.com/678ac38b1f7c98624f37a131/67a41d53f214b5b75c685fcc_2.png" alt="Toyota Tundra">
             <span>Premium Truck/Sedan</span><span class="price" id="toyota-price"></span>
           </div>
-          <div class="vehicle vehicle-disabled" id="cadillac" onclick="sV2('cadillac')">
+          <div class="vehicle" id="cadillac" onclick="sV2('cadillac')">
             <img src="https://cdn.prod.website-files.com/678ac38b1f7c98624f37a131/67b9871b16217532ab8642f9_Cadillac%20Escalade%20ESV.jpeg" alt="Cadillac Escalade ESV">
-            <span>Premium SUV</span><span class="price">Coming Soon</span>
+            <span>Premium SUV</span><span class="price"></span>
           </div>
           <div><button type="button" id="checkout-button" class="hidden" onclick="hS(event)">Check Out</button></div>
         </div>
