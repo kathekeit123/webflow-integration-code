@@ -110,7 +110,7 @@ html[data-booking-type="hourly"] #luggage-container {display: none !important;}
 <script>
 let routeData = null; // Almacena los datos originales de la ruta de Google Maps
 let stopCount = 0;
-let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:24,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:5,HR:95,MR:95/60,SUV_BF:24,SUV_RM:3.75,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
+let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:5,HR:95,MR:95/60,SUV_BF:24,SUV_RM:3.75,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 let debounceTimer;
 function debounceMapUpdate(func, wait) {clearTimeout(debounceTimer);debounceTimer = setTimeout(func, wait);}
 function isBNAAirport(a){if(!a)return!1;a=a.toLowerCase();return a.includes("bna")||a.includes("nashville int")||a.includes("nashville airport")}
