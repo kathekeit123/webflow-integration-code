@@ -827,8 +827,11 @@ function updateFixedHourlyPrice() {
   
   // Obtener el vehículo seleccionado
   const selectedVehicle = document.querySelector('.vehicle.selected');
-  const isSUV = selectedVehicle && selectedVehicle.id === 'cadillac';
-  const hourlyRate = isSUV ? PR.SUV_HR : PR.HR;
+  const isVehicleSelected = selectedVehicle !== null;
+  const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
+  
+  // If no vehicle is selected, use SUV rates (higher price) as default
+  const hourlyRate = isVehicleSelected ? (isSUV ? PR.SUV_HR : PR.HR) : PR.SUV_HR;
   
   const total = hours * hourlyRate;
   
@@ -876,8 +879,11 @@ function adjustDuration(e) {
   
   // Obtener el vehículo seleccionado para usar la tarifa correcta
   const selectedVehicle = document.querySelector('.vehicle.selected');
-  const isSUV = selectedVehicle && selectedVehicle.id === 'cadillac';
-  const hourlyRate = isSUV ? PR.SUV_HR : PR.HR;
+  const isVehicleSelected = selectedVehicle !== null;
+  const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
+  
+  // If no vehicle is selected, use SUV rates (higher price) as default
+  const hourlyRate = isVehicleSelected ? (isSUV ? PR.SUV_HR : PR.HR) : PR.SUV_HR;
   
   const total = hours * hourlyRate;
   
@@ -1355,9 +1361,10 @@ async function cTP(origin, destination, stops, passengers) {
     const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
     
     // Apply the correct rates based on vehicle type
-    const baseFare = isSUV ? PR.SUV_BF : PR.BF;
-    const ratePerMile = isSUV ? PR.SUV_RM : PR.RM;
-    const ratePerMinute = isSUV ? PR.SUV_PMN : PR.PMN;
+    // If no vehicle is selected, use SUV rates (higher price) as default
+    const baseFare = isVehicleSelected ? (isSUV ? PR.SUV_BF : PR.BF) : PR.SUV_BF;
+    const ratePerMile = isVehicleSelected ? (isSUV ? PR.SUV_RM : PR.RM) : PR.SUV_RM;
+    const ratePerMinute = isVehicleSelected ? (isSUV ? PR.SUV_PMN : PR.PMN) : PR.SUV_PMN;
     
     const passengersAdults = parseInt(passengers) || 0;
     const passengersKids = parseInt(document.getElementById("kids").value) || 0;
