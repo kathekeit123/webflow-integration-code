@@ -72,6 +72,52 @@ html[data-booking-type="hourly"] #luggage-container {display: none !important;}
 .vehicle{display:inline-block;width:45%;margin:10px;padding:10px;background:#222;border-radius:10px;cursor:pointer;text-align:center}
 .vehicle img{width:100%;border-radius:10px}
 .vehicle span{display:block;margin-top:10px;color:#fff;font-size:1.2em;font-weight:700}
+/* New styles for collapsible details */
+.price-summary {
+  background: #333;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.price-summary:hover {
+  background: #444;
+}
+.price-summary-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.more-details-toggle {
+  color: #888;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.more-details-toggle i {
+  transition: transform 0.3s ease;
+}
+.more-details-toggle.expanded i {
+  transform: rotate(180deg);
+}
+.price-breakdown-details {
+  background: #2a2a2a;
+  border-radius: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.price-breakdown-details.collapsed {
+  max-height: 0;
+}
+.price-breakdown-details.expanded {
+  max-height: 500px;
+}
+.price-breakdown-content {
+  padding: 15px;
+}
 .price-loading{display: flex; align-items: center; justify-content: center; color: #fff; padding: 15px; font-style: italic;}
 .price-loading i{margin-right: 10px; animation: spin 2s linear infinite;}
 .price-ready{display: block;}
@@ -108,7 +154,7 @@ html[data-booking-type="hourly"] #luggage-container {display: none !important;}
 @media(orientation:landscape) and (max-height:450px) {#map-container{height: 250px;max-height: 60vh;}}
 </style>
 <script>
-let routeData = null; // Almacena los datos originales de la ruta de Google Maps
+let routeData = null;
 let stopCount = 0;
 let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:5,HR:95,MR:95/60,SUV_BF:24,SUV_RM:3.75,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 let debounceTimer;
@@ -119,6 +165,20 @@ function gSP(){try{sessionStorage.removeItem('paymentInitiated');sessionStorage.
 function cFSR(){return!1}
 function sL(){document.getElementById("lo").style.display="flex"}
 function hL(){document.getElementById("lo").style.display="none"}
+function togglePriceDetails() {
+  const detailsContainer = document.getElementById('price-breakdown-details');
+  const toggle = document.querySelector('.more-details-toggle');
+  
+  if (detailsContainer.classList.contains('collapsed')) {
+    detailsContainer.classList.remove('collapsed');
+    detailsContainer.classList.add('expanded');
+    toggle.classList.add('expanded');
+  } else {
+    detailsContainer.classList.remove('expanded');
+    detailsContainer.classList.add('collapsed');
+    toggle.classList.remove('expanded');
+  }
+}
 function dMU(){const priceContainer=document.getElementById("price-breakdown");const bookingType=document.getElementById("booking-type").value;if(bookingType!=="hourly"){if(priceContainer&&!document.getElementById("price-loading")){const loadingDiv=document.createElement("div");loadingDiv.id="price-loading";loadingDiv.className="price-loading";loadingDiv.innerHTML='<i class="fas fa-spinner"></i> Calculating price...';priceContainer.innerHTML='';priceContainer.appendChild(loadingDiv);}}if(mUTm)clearTimeout(mUTm);const loadingEl=document.getElementById("map-loading");if(loadingEl)loadingEl.style.opacity="1";const selectedDate=document.getElementById("pickup-date").value;const selectedTime=document.getElementById("pickup-time").value;window.selectedDepartureTime=null;if(selectedDate&&selectedTime){const departureTime=new Date(`${selectedDate}T${selectedTime}`);if(!isNaN(departureTime.getTime())){window.selectedDepartureTime=departureTime;}}debounceMapUpdate(async function(){console.log("dMU timer triggered, calling uM");await uM();},800);}
 function tTT() {var e = document.getElementById("trip-type").value, t = document.getElementById("dropoff-container");"round-trip" === e ? (t.style.display = "none", document.getElementById("dropoff").value = document.getElementById("pickup").value) : t.style.display = "block";dMU();}
 window.addEventListener("DOMContentLoaded", () => {
@@ -1358,10 +1418,6 @@ function uPD(priceDetails) {
     priceContainer.innerHTML = `
       <div class="price-details">
         <h3><i class="fas fa-file-invoice-dollar"></i> Hourly Rate</h3>
-        <div class="price-item">
-          <span><i class="far fa-clock"></i> ${hours} hour(s) × $${hourlyRate.toFixed(2)}/hour:</span>
-          <span>$${(hours * hourlyRate).toFixed(2)}</span>
-        </div>
         <div class="price-item total">
           <span><i class="fas fa-money-check-alt"></i> Total:</span>
           <span>$${total.toFixed(2)}</span>
@@ -1371,41 +1427,55 @@ function uPD(priceDetails) {
     const originalDurationText = priceDetails.details.googleDurationText || "";
     const adjustedDurationText = priceDetails.details.adjustedDurationText || originalDurationText;
     const googleDistanceText = priceDetails.details.googleDistanceText || "";
-
-    
     const serviceTitle = bookingType === "transfer" ? "Airport Transfer Pricing" : "Point-to-Point Pricing";
     
     priceContainer.innerHTML = `
       <div class="price-details">
         <h3><i class="fas fa-file-invoice-dollar"></i> ${serviceTitle}</h3>
-        <div class="price-item">
-          <span><i class="fas fa-car"></i> Base Fare:</span>
-          <span>$${priceDetails.baseFare.toFixed(2)}</span>
+        
+        <!-- Price Summary -->
+        <div class="price-summary" onclick="togglePriceDetails()">
+          <div class="price-summary-content">
+            <div class="price-item total">
+              <span><i class="fas fa-money-check-alt"></i> Total:</span>
+              <span>$${priceDetails.total.toFixed(2)}</span>
+            </div>
+            <div class="more-details-toggle">
+              <span>More details</span>
+              <i class="fas fa-chevron-down"></i>
+            </div>
+          </div>
         </div>
-        <div class="price-item">
-          <span><i class="fas fa-route"></i> Distance Cost:</span>
-          <span>$${priceDetails.distanceCost.toFixed(2)}</span>
-        </div>
-        <div class="price-item">
-          <span><i class="fas fa-clock"></i> Time Cost:</span>
-          <span>$${priceDetails.timeCost.toFixed(2)}</span>
-        </div>
-        ${bookingType === "transfer" && priceDetails.airportFee > 0 ? 
-          `<div class="price-item">
-            <span><i class="fas fa-plane"></i> Airport Fee:</span>
-            <span>$${priceDetails.airportFee.toFixed(2)}</span>
-          </div>` : ""}
-        <div class="price-item">
-          <span><i class="fas fa-tools"></i> Service Fee (5%):</span>
-          <span>$${priceDetails.serviceFee.toFixed(2)}</span>
-        </div>
-        <div class="price-item">
-          <span><i class="fas fa-receipt"></i> Tax (9.75%):</span>
-          <span>$${priceDetails.tax.toFixed(2)}</span>
-        </div>
-        <div class="price-item total">
-          <span><i class="fas fa-money-check-alt"></i> Total:</span>
-          <span>$${priceDetails.total.toFixed(2)}</span>
+        
+        <!-- Collapsible Details -->
+        <div id="price-breakdown-details" class="price-breakdown-details collapsed">
+          <div class="price-breakdown-content">
+            <div class="price-item">
+              <span><i class="fas fa-car"></i> Base Fare:</span>
+              <span>$${priceDetails.baseFare.toFixed(2)}</span>
+            </div>
+            <div class="price-item">
+              <span><i class="fas fa-route"></i> Distance Cost:</span>
+              <span>$${priceDetails.distanceCost.toFixed(2)}</span>
+            </div>
+            <div class="price-item">
+              <span><i class="fas fa-clock"></i> Time Cost:</span>
+              <span>$${priceDetails.timeCost.toFixed(2)}</span>
+            </div>
+            ${bookingType === "transfer" && priceDetails.airportFee > 0 ? 
+              `<div class="price-item">
+                <span><i class="fas fa-plane"></i> Airport Fee:</span>
+                <span>$${priceDetails.airportFee.toFixed(2)}</span>
+              </div>` : ""}
+            <div class="price-item">
+              <span><i class="fas fa-tools"></i> Service Fee (5%):</span>
+              <span>$${priceDetails.serviceFee.toFixed(2)}</span>
+            </div>
+            <div class="price-item">
+              <span><i class="fas fa-receipt"></i> Tax (9.75%):</span>
+              <span>$${priceDetails.tax.toFixed(2)}</span>
+            </div>
+          </div>
         </div>
       </div>`;
   }
