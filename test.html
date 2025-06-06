@@ -158,6 +158,8 @@ let routeData = null;
 let stopCount = 0;
 let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:5,HR:95,MR:95/60,SUV_BF:24,SUV_RM:3.75,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 let debounceTimer;
+let isGoogleMapsReady = false;
+let mapInitialized = false;
 function debounceMapUpdate(func, wait) {clearTimeout(debounceTimer);debounceTimer = setTimeout(func, wait);}
 function isBNAAirport(a){if(!a)return!1;a=a.toLowerCase();return a.includes("bna")||a.includes("nashville int")||a.includes("nashville airport")}
 function sRP(){document.getElementById('sm').style.display='block';document.getElementById('redir').style.display='flex';}
@@ -188,36 +190,278 @@ window.addEventListener("DOMContentLoaded", () => {
   const isMobile = window.innerWidth < 768;
   console.log("Device type detected:", isMobile ? "mobile" : "desktop", "width:", window.innerWidth);
   
-  // Inicializar el mapa con un pequeño retardo para asegurar que otros elementos estén listos
+  // Función para configurar elementos básicos del DOM
+  function setupBasicElements() {
+    // Configurar la fecha mínima para el selector de fecha
+    document.getElementById("pickup-date").min = (new Date).toISOString().split("T")[0];
+    
+    // Mostrar el selector de tipo de booking
+    document.querySelector(".booking-type-selector").style.display = "flex";
+    
+    // Configuración de horas para tarifas por hora
+    document.getElementById("trip-hours").value = 3;
+    document.getElementById("hours-display").textContent = 3;
+  }
+  
+  // Función para manejar la inicialización de Google Maps
+  function setupGoogleMapsInitialization(isMobile) {
+    console.log("Setting up Google Maps initialization for", isMobile ? "mobile" : "desktop");
+    let mapsInitAttempts = 0;
+    const maxAttempts = isMobile ? 10 : 8;
+    const retryDelay = isMobile ? 1000 : 800;
+    
+    function initializeMapsWithRetry() {
+      mapsInitAttempts++;
+      console.log(`Attempting to initialize Google Maps (attempt ${mapsInitAttempts})`);
+      
+      if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.places !== 'undefined') {
+        console.log("Google Maps API is available, initializing autocomplete");
+        isGoogleMapsReady = true;
+        
+        try {
+          // Esperar un poco más en móviles antes de inicializar autocomplete
+          setTimeout(() => {
+            initAC();
+            console.log("Autocomplete initialized successfully");
+          }, isMobile ? 300 : 100);
+        } catch (e) {
+          console.error("Error initializing autocomplete:", e);
+          // Retry en caso de error
+          if (mapsInitAttempts < maxAttempts) {
+            setTimeout(initializeMapsWithRetry, retryDelay);
+          }
+        }
+      } else {
+        console.log("Google Maps not yet available");
+        
+        if (mapsInitAttempts < maxAttempts) {
+          setTimeout(initializeMapsWithRetry, retryDelay);
+        } else {
+          console.warn("Failed to initialize Google Maps after multiple attempts");
+          
+          // Último intento: recargar el script
+          if (mapsInitAttempts === maxAttempts) {
+            console.log("Attempting to reload Google Maps script");
+            const script = document.createElement('script');
+            script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyBECPPi3uRa4A5CQ7-zIvQ3ooJu3g9EQKg&libraries=places&callback=initMapCallback";
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+            
+            setTimeout(initializeMapsWithRetry, 2000);
+          }
+        }
+      }
+    }
+    
+    // Comenzar el proceso con retardo inicial apropiado
+    setTimeout(initializeMapsWithRetry, isMobile ? 800 : 400);
+  }
+  
+  // Función para configurar event listeners
+  function setupEventListeners() {
+    // Configuración del tipo de viaje
+    if (document.getElementById("trip-type")) {
+      document.getElementById("trip-type").addEventListener("change", tTT);
+      tTT();
+    }
+    
+    // Función auxiliar para añadir listeners
+    function addChangeListener(id, callback) {
+      const element = document.getElementById(id);
+      if (element) {
+        element.addEventListener("change", callback);
+        console.log(`Added change listener to ${id}`);
+      } else {
+        console.warn(`Element ${id} not found for change listener`);
+      }
+    }
+    
+    // Añadir listeners con mejor manejo de errores
+    try {
+      addChangeListener("pickup-date", dMU);
+      addChangeListener("pickup-time", dMU);
+      addChangeListener("pickup", function() { 
+        dMU(); 
+        autoSwitchToAirportTransfer(); 
+      });
+      addChangeListener("dropoff", function() { 
+        dMU(); 
+        autoSwitchToAirportTransfer(); 
+      });
+      addChangeListener("location-type", function() { tAF() });
+      addChangeListener("passengers", dMU);
+      addChangeListener("kids", dMU);
+      addChangeListener("luggage", dMU);
+      
+      // Listeners de input con debounce para mejor rendimiento
+      const pickupInput = document.getElementById("pickup");
+      const dropoffInput = document.getElementById("dropoff");
+      
+      if (pickupInput) {
+        pickupInput.addEventListener("input", function() { 
+          console.log("Pickup input changed, debouncing map update");
+          const debounceDelay = isMobile ? 2000 : 1200;
+          debounceMapUpdate(dMU, debounceDelay); 
+        });
+      }
+      
+      if (dropoffInput) {
+        dropoffInput.addEventListener("input", function() { 
+          console.log("Dropoff input changed, debouncing map update");
+          const debounceDelay = isMobile ? 2000 : 1200;
+          debounceMapUpdate(dMU, debounceDelay); 
+        });
+      }
+    } catch (e) {
+      console.error("Error setting up event listeners:", e);
+    }
+    
+    // Configuración de listeners para los botones de tipo de reserva
+    try {
+      document.getElementById("hourly-btn").addEventListener("click", function() {
+        console.log("Switching to hourly mode");
+        document.getElementById("luggage-container").style.display = "none";
+      });
+      
+      document.getElementById("transfer-btn").addEventListener("click", function() {
+        console.log("Switching to transfer mode");
+        document.getElementById("luggage-container").style.display = "block";
+      });
+      
+      document.getElementById("point-btn").addEventListener("click", function() {
+        console.log("Switching to point-to-point mode");
+        document.getElementById("luggage-container").style.display = "block";
+      });
+    } catch (e) {
+      console.error("Error setting up booking type buttons:", e);
+    }
+  }
+  
+  // Función para limpiar datos de sesiones
+  function clearSessionData() {
+    try {
+      localStorage.removeItem('paymentCompleted');
+      localStorage.removeItem('paymentInProgress');
+      localStorage.removeItem('finalRedirect');
+      localStorage.removeItem('squareRedirectTime');
+      sessionStorage.removeItem('paymentInitiated');
+      sessionStorage.removeItem('paymentStartTime');
+      sessionStorage.removeItem('paymentCompleted');
+      sessionStorage.removeItem('pageViewedAfterPayment');
+      document.cookie = "payment_complete=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      document.cookie = "payment_started=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      document.cookie = "target_redirect=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    } catch (e) {
+      console.warn("Error clearing session data:", e);
+    }
+  }
+  
+  // Función para configuración inicial del tipo de booking
+  function setupInitialBookingType() {
+    // Inicializar el tipo de booking
+    const initialBookingType = document.getElementById("booking-type").value;
+    console.log("Initial booking type:", initialBookingType);
+    
+    if (initialBookingType === "transfer") {
+      sBT("transfer");
+    } else {
+      sBT("hourly");
+    }
+    
+    // Configuración de visualización según el tipo de reserva
+    if (document.getElementById("booking-type").value === "hourly") {
+      document.getElementById("luggage-container").style.display = "none";
+    }
+    
+    // Si está en modo hourly, inicializar el precio fijo y mostrar la sección de vehículo
+    if (document.getElementById("booking-type").value === "hourly") {
+      setTimeout(function() {
+        console.log("Setting up hourly pricing");
+        
+        // Actualizar el precio fijo
+        try {
+          updateFixedHourlyPrice();
+          console.log("Fixed hourly price updated");
+        } catch (e) {
+          console.error("Error updating fixed hourly price:", e);
+        }
+        
+        // Asegurarse de que el componente de precio fijo sea visible
+        const fixedPriceBox = document.getElementById("fixed-hourly-price");
+        if (fixedPriceBox) {
+          fixedPriceBox.style.display = "block";
+        }
+        
+        // Mostrar la sección de vehículos automáticamente
+        const vehicleSection = document.getElementById("vehicle-section");
+        if (vehicleSection) {
+          vehicleSection.classList.remove("hidden");
+          console.log("Vehicle section displayed");
+        }
+        
+        try {
+          lVBPC();
+        } catch (e) {
+          console.error("Error in lVBPC:", e);
+        }
+        
+        // También calcular precio para el sistema interno
+        try {
+          const hours = parseInt(document.getElementById("trip-hours").value) || 3;
+          const hourlyRate = PR.HR;
+          const total = hours * hourlyRate;
+          
+          // Crear objeto de detalles de precio
+          const priceDetails = {
+            baseFare: hours * hourlyRate,
+            total: total,
+            details: {
+              hours: hours,
+              hourlyRate: hourlyRate
+            }
+          };
+          
+          // Guardar los detalles del precio
+          lPDet = priceDetails;
+          console.log("Hourly price details set:", priceDetails);
+          
+          // Configurar el precio en el botón de pago
+          const checkoutButton = document.getElementById("checkout-button");
+          if (checkoutButton) {
+            checkoutButton.setAttribute("data-price", total.toFixed(2));
+            console.log("Checkout button price set to", total.toFixed(2));
+          }
+        } catch (e) {
+          console.error("Error setting up price details:", e);
+        }
+      }, isMobile ? 1000 : 600);
+    }
+  }
+  
+  // EJECUTAR TODAS LAS FUNCIONES EN EL ORDEN CORRECTO
+  
+  // Inicializar elementos básicos inmediatamente
+  setupBasicElements();
+  
+  // Inicializar el mapa con retardo apropiado para el dispositivo
   setTimeout(() => {
     console.log("Initializing map display");
     initMapDisplay();
-  }, isMobile ? 300 : 100);
+  }, isMobile ? 500 : 200);
   
-  // Configurar la fecha mínima para el selector de fecha
-  document.getElementById("pickup-date").min = (new Date).toISOString().split("T")[0];
+  // Setup Google Maps con mejor manejo para móviles
+  setupGoogleMapsInitialization(isMobile);
   
-  // Mostrar el selector de tipo de booking
-  document.querySelector(".booking-type-selector").style.display = "flex";
+  // Setup event listeners
+  setupEventListeners();
   
-  // Inicializar el tipo de booking
-  const initialBookingType = document.getElementById("booking-type").value;
-  console.log("Initial booking type:", initialBookingType);
-  // Usar condición normal en lugar de operador ternario para mejor legibilidad
-  if (initialBookingType === "transfer") {
-    sBT("transfer");
-  } else {
-    sBT("hourly");
-  }
+  // Limpiar datos de sesiones
+  clearSessionData();
   
-  // Configuración del tipo de viaje
-  if (document.getElementById("trip-type")) {
-    document.getElementById("trip-type").addEventListener("change", tTT);
-    // Invocar directamente en lugar de ejecutar como bloque secundario
-    tTT();
-  }
-  
-  // Añadir listeners para cambios en el formulario usando una función auxiliar
+  // Setup inicial para booking type
+  setupInitialBookingType();
+});
   function addChangeListener(id, callback) {
     const element = document.getElementById(id);
     if (element) {
@@ -440,7 +684,6 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
   }, 1000);
-});
 function iACF(e) {
   if (!e) {
     console.warn("iACF called with null element");
