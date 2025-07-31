@@ -1331,6 +1331,27 @@ function initMapDisplay(){const mapFrame = document.getElementById("map-frame");
 function ensureGoogleMapsLoaded(){if (typeof google === 'undefined' || typeof google.maps === 'undefined') {console.log("Google Maps API not loaded yet, retrying...");setTimeout(ensureGoogleMapsLoaded, 1000);return;}console.log("Google Maps API loaded successfully");if (typeof initAC === 'function') {try {initAC();} catch (e) {console.error("Error initializing autocomplete:", e);}}}
 function toggleStopContainer(){const bookingType = document.getElementById("booking-type").value;const stopContainer = document.getElementById("add-stop-container");stopContainer.style.display = (bookingType === "transfer" || bookingType === "point-to-point") ? "block" : "none";}document.addEventListener("DOMContentLoaded", () => {const addStopContainer = document.getElementById("add-stop-container");const existingButtons = addStopContainer.querySelectorAll("button");existingButtons.forEach(button => button.remove());const addStopButton = document.createElement("button");addStopButton.textContent = "Add Stop";addStopButton.type = "button";addStopButton.onclick = addStop;addStopContainer.appendChild(addStopButton);});
 function addStop(){if(typeof window.stopCount==='undefined'){window.stopCount=0;}window.stopCount++;const stopContainer=document.getElementById("stops-container");if(!stopContainer){console.error("Stops container not found");return;}const stopDiv=document.createElement("div");stopDiv.classList.add("stop");stopDiv.setAttribute("id",`stop-${window.stopCount}`);const stopInput=document.createElement("input");stopInput.setAttribute("type","text");stopInput.setAttribute("class","autocomplete");stopInput.setAttribute("name",`stop-${window.stopCount}`);stopInput.setAttribute("placeholder",`Stop ${window.stopCount}`);stopInput.addEventListener("input",function(){if(typeof dMU==='function')dMU();});const deleteButton=document.createElement("button");deleteButton.innerHTML="<i class='fas fa-times'></i>";deleteButton.classList.add("remove-button");deleteButton.type="button";deleteButton.onclick=function(){stopDiv.remove();if(typeof dMU==='function')dMU();};stopDiv.appendChild(stopInput);stopDiv.appendChild(deleteButton);stopContainer.appendChild(stopDiv);if(typeof iACF==='function'){try{iACF(stopInput);}catch(e){console.error("Error initializing autocomplete for stop:",e);}}console.log(`Added stop #${window.stopCount}`);}
+// ===== NUEVA FUNCIÓN: Construcción optimizada de URL del mapa ===== 
+function buildOptimizedMapSrc(pickup, dropoff, stops = []) {
+  const encodedPickup = encodeURIComponent(pickup.trim());
+  const encodedDropoff = encodeURIComponent(dropoff.trim());
+  const encodedStops = stops.map(stop => encodeURIComponent(stop.trim())).join('%7C');
+  
+  let mapSrc = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyBECPPi3uRa4A5CQ7-zIvQ3ooJu3g9EQKg&origin=${encodedPickup}&destination=${encodedDropoff}`;
+  
+  if (encodedStops) {
+    mapSrc += `&waypoints=${encodedStops}`;
+  }
+  
+  mapSrc += '&mode=driving';
+  
+  // ✅ Eliminamos las líneas problemáticas:
+  // mapSrc += '&avoid='; // ❌ Línea que causaba el error
+  // mapSrc += '&units=imperial'; // ❌ También problemática
+  
+  console.log("🗺️ URL del mapa construida:", mapSrc);
+  return mapSrc;
+}
 async function uM() {
   const isMobile = window.innerWidth < 768;
   console.log("uM function called - updating map and calculating prices on " + 
@@ -1438,8 +1459,9 @@ async function uM() {
   
   try {
     // Build directions URL with proper encoding
-    const mapSrc = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyBECPPi3uRa4A5CQ7-zIvQ3ooJu3g9EQKg&origin=${encodedPickup}&destination=${encodedDropoff}${encodedStops ? `&waypoints=${encodedStops}` : ''}&mode=driving`;
+    const mapSrc = buildOptimizedMapSrc(pickup, dropoff, stops);
     
+    console.log("Setting directions map source:", mapSrc);    
     console.log("Setting directions map source:", mapSrc);
     
     if (mapFrame) {
@@ -1497,19 +1519,29 @@ function cRD(origin, destination, stops = []) {
       stopover: true
     }));
     
-    const departureTime = window.selectedDepartureTime || new Date();
+    // Usar la nueva función para gestión inteligente de tiempos
+    const timeInfo = getOptimalDepartureTime();
+    const departureTime = timeInfo.time;
     
+    // Configuración base de la solicitud
     const request = {
       origin: origin,
       destination: destination,
       waypoints: waypoints,
       travelMode: google.maps.TravelMode.DRIVING,
-      provideRouteAlternatives: false,
-      drivingOptions: {
+      provideRouteAlternatives: false
+    };
+    
+    // Solo añadir drivingOptions si no estamos usando tiempo actual
+    if (!timeInfo.shouldUseCurrentTraffic) {
+      request.drivingOptions = {
         departureTime: departureTime,
         trafficModel: google.maps.TrafficModel.BEST_GUESS
-      }
-    };
+      };
+      console.log("🚗 Usando tráfico predictivo para:", departureTime.toLocaleString());
+    } else {
+      console.log("🚗 Usando tráfico actual en tiempo real");
+    }
     
     return new Promise((resolve, reject) => {
       directionsService.route(request, function(result, status) {
@@ -1522,13 +1554,25 @@ function cRD(origin, destination, stops = []) {
           const totalSeconds = legs.reduce((sum, leg) => sum + leg.duration.value, 0);
           const arrivalTime = new Date(departureTime.getTime() + (totalSeconds * 1000));
           
+          // NUEVO: Logging detallado para debugging
+          console.log("=== 🗺️ DETALLES DE RUTA GOOGLE MAPS ===");
+          console.log("🕒 Tiempo de salida usado:", departureTime.toLocaleString());
+          console.log("⏱️ Tiempo actual:", new Date().toLocaleString());
+          console.log("🚦 Tipo de tráfico:", timeInfo.shouldUseCurrentTraffic ? "TIEMPO REAL" : "PREDICTIVO");
+          console.log("📏 Distancia total:", totalDistanceMiles.toFixed(2), "millas");
+          console.log("⏰ Duración Google Maps:", durationTexts.join(' + '));
+          console.log("🏁 Tiempo estimado de llegada:", arrivalTime.toLocaleString());
+          console.log("💡 Razón para selección de tiempo:", timeInfo.reason);
+          console.log("=====================================");
+          
           // Store complete information in routeData global
           routeData = {
             distanceTexts: distanceTexts,
             durationTexts: durationTexts,
             totalDistanceMeters: totalDistanceMeters,
             totalSeconds: totalSeconds,
-            legs: legs
+            legs: legs,
+            timeInfo: timeInfo  // Guardar info de tiempo para referencia
           };
           
           console.log("Google Maps textos de duración:", durationTexts.join(' + '));
@@ -1543,7 +1587,8 @@ function cRD(origin, destination, stops = []) {
             departureTime: departureTime,
             arrivalTime: arrivalTime,
             actualRoute: result.routes[0],
-            legs: legs
+            legs: legs,
+            timeInfo: timeInfo
           });
         } else {
           reject(`Error en la solicitud de direcciones: ${status}`);
@@ -1630,6 +1675,22 @@ async function cTP(origin, destination, stops, passengers) {
     const tax = pretaxTotal * PR.TR;
     const total = pretaxTotal + tax;
     
+    // NUEVO: Logging de comparación de tiempos y precios
+    console.log("=== 💰 CÁLCULO DE PRECIOS ===");
+    console.log("⏰ Duración original Google Maps:", googleDurationText);
+    console.log("⏰ Duración ajustada (+2 min):", adjustedDurationText);
+    console.log("📏 Distancia total:", totalMiles.toFixed(2), "millas");
+    console.log("⏱️ Minutos totales para pricing:", totalMinutes);
+    console.log("🚗 Tipo de vehículo:", isVehicleSelected ? (isSUV ? "SUV" : "Sedan/Truck") : "Por defecto (SUV)");
+    console.log("💵 Total calculado: $", total.toFixed(2));
+    console.log("🧮 Desglose:");
+    console.log("  - Base Fare: $", baseFare.toFixed(2));
+    console.log("  - Distance Cost: $", distanceCost.toFixed(2));
+    console.log("  - Time Cost: $", timeCost.toFixed(2));
+    console.log("  - Service Fee: $", serviceFee.toFixed(2));
+    console.log("  - Tax: $", tax.toFixed(2));
+    console.log("============================");
+
     return {
       baseFare: baseFare,
       distanceCost: distanceCost,
@@ -1849,6 +1910,170 @@ function lVBPC() {
 }
 function setupPassengerListeners() {const passengersField = document.getElementById("passengers");const kidsField = document.getElementById("kids");function updatePassengerLimit() {const bookingType = document.getElementById("booking-type").value;if (bookingType === "transfer" || bookingType === "point-to-point") {lVBPC();dMU();}}passengersField.addEventListener("input", updatePassengerLimit);passengersField.addEventListener("change", updatePassengerLimit);kidsField.addEventListener("input", updatePassengerLimit);kidsField.addEventListener("change", updatePassengerLimit);updatePassengerLimit();}
 function updateMapAndPrice() {dMU();}
+function getOptimalDepartureTime() {
+    const selectedTime = window.selectedDepartureTime;
+    const now = new Date();
+    
+    if (!selectedTime) {
+        console.log("⏰ No hay tiempo seleccionado, usando tiempo actual");
+        return { 
+            time: now, 
+            useTraffic: true, 
+            reason: "No time selected",
+            shouldUseCurrentTraffic: true
+        };
+    }
+    
+    const timeDiff = Math.abs(selectedTime.getTime() - now.getTime());
+    const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en millisegundos
+    
+    if (timeDiff < thirtyMinutes) {
+        console.log("⏰ Tiempo seleccionado muy cercano al actual, usando tiempo actual para mejor precisión");
+        return { 
+            time: now, 
+            useTraffic: true, 
+            reason: "Time too close to current",
+            shouldUseCurrentTraffic: true
+        };
+    }
+    
+    const isInPast = selectedTime.getTime() < now.getTime();
+    if (isInPast) {
+        console.log("⏰ Tiempo seleccionado en el pasado, usando tiempo actual");
+        return { 
+            time: now, 
+            useTraffic: true, 
+            reason: "Selected time is in the past",
+            shouldUseCurrentTraffic: true
+        };
+    }
+    
+    console.log("⏰ Usando tiempo seleccionado futuro:", selectedTime);
+    return { 
+        time: selectedTime, 
+        useTraffic: true, 
+        reason: "Using selected future time",
+        shouldUseCurrentTraffic: false
+    };
+}
+function debugTimeComparison() {
+  console.log("=== 🔍 COMPARACIÓN COMPLETA DE TIEMPOS ===");
+  
+  if (!routeData) {
+    console.log("❌ No hay datos de ruta disponibles");
+    console.log("   Asegúrate de haber calculado una ruta primero");
+    return;
+  }
+  
+  const mapFrame = document.getElementById("map-frame");
+  const currentMapSrc = mapFrame ? mapFrame.src : "No disponible";
+  
+  console.log("🗺️ MAPA VISUAL (iframe):");
+  console.log("   URL:", currentMapSrc);
+  
+  console.log("📊 DATOS DE RUTA (JavaScript API):");
+  console.log("   Duración Google Maps:", routeData.durationTexts?.join(' + ') || "N/A");
+  console.log("   Distancia Google Maps:", routeData.distanceTexts?.join(' + ') || "N/A");
+  console.log("   Segundos totales:", routeData.totalSeconds || "N/A");
+  console.log("   Millas totales:", (routeData.totalDistanceMeters / 1609.34).toFixed(2) || "N/A");
+  
+  if (routeData.timeInfo) {
+    console.log("⏰ INFORMACIÓN DE TIEMPO:");
+    console.log("   Tiempo usado:", routeData.timeInfo.time.toLocaleString());
+    console.log("   Razón:", routeData.timeInfo.reason);
+    console.log("   Tráfico actual:", routeData.timeInfo.shouldUseCurrentTraffic ? "SÍ" : "NO");
+  }
+  
+  const priceContainer = document.getElementById("price-breakdown");
+  if (priceContainer && priceContainer.innerHTML.includes("Time Cost")) {
+    console.log("💰 PRECIO:");
+    console.log("   Estado: Calculado y mostrado");
+    
+    const checkoutButton = document.getElementById("checkout-button");
+    const price = checkoutButton ? checkoutButton.getAttribute("data-price") : "N/A";
+    console.log("   Total: $" + price);
+  } else {
+    console.log("💰 PRECIO: No calculado aún");
+  }
+  
+  console.log("🕒 COMPARACIÓN DE TIMESTAMPS:");
+  console.log("   Tiempo actual:", new Date().toLocaleString());
+  console.log("   Tiempo seleccionado:", window.selectedDepartureTime ? window.selectedDepartureTime.toLocaleString() : "No seleccionado");
+  
+  console.log("======================================");
+}
+
+// Hacer la función disponible globalmente para usar en consola
+window.debugTimeComparison = debugTimeComparison;
+
+// Función auxiliar para mostrar estado actual
+function getCurrentRouteStatus() {
+  const bookingType = document.getElementById("booking-type").value;
+  const pickup = document.getElementById("pickup").value;
+  const dropoff = document.getElementById("dropoff").value;
+  
+  console.log("=== 📋 ESTADO ACTUAL ===");
+  console.log("Tipo de reserva:", bookingType);
+  console.log("Pickup:", pickup || "No especificado");
+  console.log("Dropoff:", dropoff || "No especificado");
+  console.log("Datos de ruta disponibles:", routeData ? "SÍ" : "NO");
+  console.log("======================");
+}
+
+window.getCurrentRouteStatus = getCurrentRouteStatus;
+function validateTimeSync() {
+  console.log("=== ✅ VALIDACIÓN DE SINCRONIZACIÓN ===");
+  
+  // Verificar que las funciones nuevas existen
+  const functionsToCheck = [
+    'getOptimalDepartureTime',
+    'buildOptimizedMapSrc',
+    'debugTimeComparison'
+  ];
+  
+  let allFunctionsExist = true;
+  functionsToCheck.forEach(funcName => {
+    if (typeof window[funcName] === 'function') {
+      console.log("✅", funcName, "- OK");
+    } else {
+      console.log("❌", funcName, "- NO ENCONTRADA");
+      allFunctionsExist = false;
+    }
+  });
+  
+  // Verificar variables globales
+  console.log("📊 Variables globales:");
+  console.log("   routeData:", routeData ? "Disponible" : "No disponible");
+  console.log("   selectedDepartureTime:", window.selectedDepartureTime ? "Configurado" : "No configurado");
+  
+  // Estado de elementos DOM
+  const mapFrame = document.getElementById("map-frame");
+  const priceContainer = document.getElementById("price-breakdown");
+  
+  console.log("🖼️ Elementos DOM:");
+  console.log("   Map frame:", mapFrame ? "OK" : "No encontrado");
+  console.log("   Price container:", priceContainer ? "OK" : "No encontrado");
+  
+  if (allFunctionsExist) {
+    console.log("🎉 TODAS LAS FUNCIONES INSTALADAS CORRECTAMENTE");
+  } else {
+    console.log("⚠️ FALTAN ALGUNAS FUNCIONES - Revisar instalación");
+  }
+  
+  console.log("=====================================");
+  
+  return allFunctionsExist;
+}
+
+// Ejecutar validación automáticamente
+window.validateTimeSync = validateTimeSync;
+
+// Ejecutar después de que se cargue todo
+setTimeout(() => {
+  if (typeof validateTimeSync === 'function') {
+    validateTimeSync();
+  }
+}, 2000);
 </script>
 </head>
 <body>
