@@ -1352,6 +1352,37 @@ function buildOptimizedMapSrc(pickup, dropoff, stops = []) {
   console.log("🗺️ URL del mapa construida:", mapSrc);
   return mapSrc;
 }
+async function cHP() {
+  const hours = parseInt(document.getElementById("trip-hours").value) || 3;
+  
+  // Obtener el vehículo seleccionado (consistente con cTP)
+  const selectedVehicle = document.querySelector('.vehicle.selected');
+  const isVehicleSelected = selectedVehicle !== null;
+  const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
+  
+  // Si no hay vehículo seleccionado, usar tarifas SUV (precio más alto)
+  const hourlyRate = isVehicleSelected ? (isSUV ? PR.SUV_HR : PR.HR) : PR.SUV_HR;
+  
+  const total = hours * hourlyRate;
+  
+  console.log("=== 💰 CÁLCULO DE PRECIO POR HORA ===");
+  console.log("🕒 Horas:", hours);
+  console.log("🚗 Vehículo seleccionado:", isVehicleSelected ? (isSUV ? "SUV" : "Sedan/Truck") : "Por defecto (SUV)");
+  console.log("💵 Tarifa por hora:", hourlyRate.toFixed(2));
+  console.log("💵 Total calculado: $", total.toFixed(2));
+  console.log("================================");
+  
+  return {
+    baseFare: hours * hourlyRate,
+    total: total,
+    details: {
+      hours: hours,
+      hourlyRate: hourlyRate,
+      isVehicleSelected: isVehicleSelected,
+      isSUV: isSUV
+    }
+  };
+}
 async function uM() {
   const isMobile = window.innerWidth < 768;
   console.log("uM function called - updating map and calculating prices on " + 
@@ -1602,70 +1633,81 @@ function cRD(origin, destination, stops = []) {
 }
 async function cTP(origin, destination, stops, passengers) {
   try {
+    // Obtener tiempo de salida para la ruta
     const departureTimeForRoute = window.selectedDepartureTime || new Date();
-    console.log("Llamando a cRD con:", origin, destination, stops);
-    const routeDetails = await cRD(origin, destination, stops);
-    console.log("Detalles de ruta recibidos:", routeDetails);
+    console.log("=== 🚀 INICIANDO CÁLCULO DE PRECIO ===");
+    console.log("📍 Llamando a cRD con:", origin, destination, stops);
     
+    // Obtener detalles de la ruta desde Google Maps
+    const routeDetails = await cRD(origin, destination, stops);
+    console.log("✅ Detalles de ruta recibidos:", routeDetails);
+    
+    // Validar que recibimos datos válidos
     if (!routeDetails || typeof routeDetails.totalMiles !== 'number') {
       throw new Error("Datos de ruta inválidos recibidos");
     }
     
+    // Extraer datos básicos de la ruta
     const totalMiles = routeDetails.totalMiles;
     const googleDurationText = routeDetails.googleDurationText;
     const googleDistanceText = routeDetails.googleDistanceText;
     const totalSeconds = routeData.totalSeconds;
     
-    // Add 2 minutes (120 seconds) to the total time
+    // Añadir buffer de 2 minutos (120 segundos) al tiempo total
     const adjustedTotalSeconds = totalSeconds + 120;
     const totalMinutes = Math.round(adjustedTotalSeconds / 60);
     
-    console.log("Minutos totales para el viaje (con buffer):", totalMinutes);
-    console.log("Google Maps duración texto original:", googleDurationText);
+    console.log("⏰ Procesando tiempos:");
+    console.log("   Segundos originales:", totalSeconds);
+    console.log("   Segundos con buffer (+2 min):", adjustedTotalSeconds);
+    console.log("   Minutos totales para pricing:", totalMinutes);
+    console.log("   Google Maps duración original:", googleDurationText);
     
-    // Create an adjusted duration text with the extra 2 minutes
+    // Crear texto de duración ajustado con los 2 minutos extra
     let adjustedDurationText = googleDurationText;
-    if (googleDurationText.includes("min")) {
-      // Extract numbers from duration text
+    if (googleDurationText && googleDurationText.includes("min")) {
+      // Extraer números del texto de duración
       const minutesMatch = googleDurationText.match(/(\d+) min/);
       const hoursMatch = googleDurationText.match(/(\d+) hour/);
       
       if (minutesMatch) {
         const minutes = parseInt(minutesMatch[1]) + 2;
         if (hoursMatch) {
-          // Format: "X hour(s) Y min"
+          // Formato: "X hour(s) Y min"
           const hours = parseInt(hoursMatch[1]);
           adjustedDurationText = `${hours} hour${hours > 1 ? 's' : ''} ${minutes} min`;
         } else {
-          // Format: "Y min"
+          // Formato: "Y min"
           adjustedDurationText = `${minutes} min`;
         }
       } else if (hoursMatch) {
-        // Format: "X hour(s)" (no minutes)
+        // Formato: "X hour(s)" (sin minutos)
         const hours = parseInt(hoursMatch[1]);
         adjustedDurationText = `${hours} hour${hours > 1 ? 's' : ''} 2 min`;
       }
     }
     
-    console.log("Adjusted duration text:", adjustedDurationText);
+    console.log("   Duración ajustada mostrada:", adjustedDurationText);
     
-    // Get the selected vehicle
+    // Determinar el vehículo seleccionado y sus tarifas
     const selectedVehicle = document.querySelector('.vehicle.selected');
     const isVehicleSelected = selectedVehicle !== null;
     const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
     
-    // Apply the correct rates based on vehicle type
-    // If no vehicle is selected, use SUV rates (higher price) as default
+    // Aplicar tarifas correctas según el tipo de vehículo
+    // Si no hay vehículo seleccionado, usar tarifas SUV (precio más alto) por defecto
     const baseFare = isVehicleSelected ? (isSUV ? PR.SUV_BF : PR.BF) : PR.SUV_BF;
     const ratePerMile = isVehicleSelected ? (isSUV ? PR.SUV_RM : PR.RM) : PR.SUV_RM;
     const ratePerMinute = isVehicleSelected ? (isSUV ? PR.SUV_PMN : PR.PMN) : PR.SUV_PMN;
     
+    // Calcular costos individuales
     const passengersAdults = parseInt(passengers) || 0;
     const passengersKids = parseInt(document.getElementById("kids").value) || 0;
     const distanceCost = totalMiles * ratePerMile;
     const passengerCost = (document.getElementById("booking-type").value === "hourly") ? 0 : (passengersAdults + passengersKids) * PR.PP;
-    const timeCost = totalMinutes * ratePerMinute; // Using adjusted time for cost calculation
+    const timeCost = totalMinutes * ratePerMinute; // Usar tiempo ajustado para cálculo de costo
     
+    // Calcular subtotal y tarifas adicionales
     let subtotal = baseFare + distanceCost + passengerCost + timeCost;
     const airportFee = (document.getElementById("booking-type").value === "transfer") ? PR.AF : 0;
     subtotal += airportFee;
@@ -1675,22 +1717,52 @@ async function cTP(origin, destination, stops, passengers) {
     const tax = pretaxTotal * PR.TR;
     const total = pretaxTotal + tax;
     
-    // NUEVO: Logging de comparación de tiempos y precios
-    console.log("=== 💰 CÁLCULO DE PRECIOS ===");
-    console.log("⏰ Duración original Google Maps:", googleDurationText);
-    console.log("⏰ Duración ajustada (+2 min):", adjustedDurationText);
-    console.log("📏 Distancia total:", totalMiles.toFixed(2), "millas");
-    console.log("⏱️ Minutos totales para pricing:", totalMinutes);
-    console.log("🚗 Tipo de vehículo:", isVehicleSelected ? (isSUV ? "SUV" : "Sedan/Truck") : "Por defecto (SUV)");
-    console.log("💵 Total calculado: $", total.toFixed(2));
-    console.log("🧮 Desglose:");
-    console.log("  - Base Fare: $", baseFare.toFixed(2));
-    console.log("  - Distance Cost: $", distanceCost.toFixed(2));
-    console.log("  - Time Cost: $", timeCost.toFixed(2));
-    console.log("  - Service Fee: $", serviceFee.toFixed(2));
-    console.log("  - Tax: $", tax.toFixed(2));
-    console.log("============================");
-
+    // LOGGING DETALLADO PARA DEBUGGING
+    console.log("=== 💰 CÁLCULO DE PRECIOS COMPLETO ===");
+    
+    console.log("📊 DATOS DE ENTRADA:");
+    console.log("   Origen:", origin);
+    console.log("   Destino:", destination);
+    console.log("   Paradas:", stops.length > 0 ? stops.join(', ') : "Ninguna");
+    console.log("   Pasajeros adultos:", passengersAdults);
+    console.log("   Pasajeros niños:", passengersKids);
+    console.log("   Total pasajeros:", passengersAdults + passengersKids);
+    
+    console.log("📏 DATOS DE RUTA:");
+    console.log("   Distancia total:", totalMiles.toFixed(2), "millas");
+    console.log("   Duración original Google Maps:", googleDurationText);
+    console.log("   Duración ajustada (+2 min):", adjustedDurationText);
+    console.log("   Segundos totales (originales):", totalSeconds);
+    console.log("   Segundos totales (ajustados):", adjustedTotalSeconds);
+    console.log("   Minutos totales para pricing:", totalMinutes);
+    console.log("   Distancia Google Maps:", googleDistanceText);
+    
+    console.log("🚗 VEHÍCULO Y TARIFAS:");
+    console.log("   Vehículo seleccionado:", isVehicleSelected ? "SÍ" : "NO (usando SUV por defecto)");
+    console.log("   Tipo de vehículo:", isVehicleSelected ? (isSUV ? "SUV (Cadillac)" : "Sedan/Truck (Toyota)") : "Por defecto (SUV)");
+    console.log("   Tarifa base:", "$" + baseFare.toFixed(2));
+    console.log("   Tarifa por milla:", "$" + ratePerMile.toFixed(2));
+    console.log("   Tarifa por minuto:", "$" + ratePerMinute.toFixed(2));
+    
+    console.log("💵 COSTOS CALCULADOS:");
+    console.log("   Tarifa base:", "$" + baseFare.toFixed(2));
+    console.log("   Costo por distancia (" + totalMiles.toFixed(2) + " mi × $" + ratePerMile.toFixed(2) + "):", "$" + distanceCost.toFixed(2));
+    console.log("   Costo por tiempo (" + totalMinutes + " min × $" + ratePerMinute.toFixed(2) + "):", "$" + timeCost.toFixed(2));
+    console.log("   Costo por pasajeros (" + (passengersAdults + passengersKids) + " × $" + PR.PP + "):", "$" + passengerCost.toFixed(2));
+    console.log("   Tarifa de aeropuerto:", "$" + airportFee.toFixed(2));
+    console.log("   Subtotal:", "$" + subtotal.toFixed(2));
+    console.log("   Service Fee (5%):", "$" + serviceFee.toFixed(2));
+    console.log("   Tax (9.75%):", "$" + tax.toFixed(2));
+    console.log("   🎯 TOTAL FINAL:", "$" + total.toFixed(2));
+    
+    console.log("⏰ INFORMACIÓN DE TIEMPO:");
+    console.log("   Tiempo de salida para ruta:", departureTimeForRoute.toLocaleString());
+    console.log("   Tiempo estimado de llegada:", new Date(departureTimeForRoute.getTime() + (adjustedTotalSeconds * 1000)).toLocaleString());
+    console.log("   Usando tráfico en tiempo real:", routeDetails.timeInfo ? (routeDetails.timeInfo.shouldUseCurrentTraffic ? "SÍ" : "NO") : "No disponible");
+    
+    console.log("=====================================");
+    
+    // Retornar objeto completo con todos los detalles
     return {
       baseFare: baseFare,
       distanceCost: distanceCost,
@@ -1702,22 +1774,58 @@ async function cTP(origin, destination, stops, passengers) {
       tax: tax,
       total: total,
       details: {
+        // Datos de ruta
         miles: totalMiles,
         googleDurationText: googleDurationText,
-        adjustedDurationText: adjustedDurationText, // Store both original and adjusted
+        adjustedDurationText: adjustedDurationText, // Almacenar ambos: original y ajustado
         googleDistanceText: googleDistanceText,
-        totalSeconds: adjustedTotalSeconds, // Use adjusted seconds
-        totalMinutes: totalMinutes, // Use adjusted minutes
+        totalSeconds: adjustedTotalSeconds, // Usar segundos ajustados
+        totalMinutes: totalMinutes, // Usar minutos ajustados
+        originalSeconds: totalSeconds, // Mantener referencia a tiempo original
+        
+        // Datos de tarifas
         pricePerMinute: ratePerMinute,
+        pricePerMile: ratePerMile,
+        baseFareAmount: baseFare,
+        
+        // Datos de vehículo
+        isVehicleSelected: isVehicleSelected,
+        isSUV: isSUV,
+        vehicleType: isVehicleSelected ? (isSUV ? "SUV" : "Sedan/Truck") : "Default SUV",
+        
+        // Datos de pasajeros
+        passengersAdults: passengersAdults,
+        passengersKids: passengersKids,
+        totalPassengers: passengersAdults + passengersKids,
+        
+        // Datos de tiempo
         useTrafficTime: true,
         departureTime: departureTimeForRoute,
-        arrivalTime: new Date(departureTimeForRoute.getTime() + (adjustedTotalSeconds * 1000)), // Adjusted arrival time
-        legs: routeDetails.legs || []
+        arrivalTime: new Date(departureTimeForRoute.getTime() + (adjustedTotalSeconds * 1000)), // Tiempo de llegada ajustado
+        
+        // Datos de ruta completos
+        legs: routeDetails.legs || [],
+        routeData: routeData, // Incluir datos completos de ruta para referencia
+        
+        // Información adicional
+        bookingType: document.getElementById("booking-type").value,
+        hasStops: stops && stops.length > 0,
+        stopsCount: stops ? stops.length : 0,
+        
+        // Para debugging
+        calculationTimestamp: new Date().toISOString(),
+        routeDetails: routeDetails // Mantener referencia completa
       }
     };
-  } catch (e) {
-    console.error("Error en cálculo de precio:", e);
-    throw new Error("Error calculando precio: " + (e.message || "Por favor verifica tu ruta e intenta de nuevo"));
+    
+  } catch (error) {
+    console.error("=== ❌ ERROR EN CÁLCULO DE PRECIO ===");
+    console.error("Error completo:", error);
+    console.error("Stack trace:", error.stack);
+    console.error("Parámetros recibidos:", { origin, destination, stops, passengers });
+    console.error("====================================");
+    
+    throw new Error("Error calculando precio: " + (error.message || "Por favor verifica tu ruta e intenta de nuevo"));
   }
 }
 function uPWM(){console.log("Price update completed");}
@@ -1806,31 +1914,42 @@ function uPD(priceDetails) {
 function updateFixedHourlyPrice() {
   const hours = parseInt(document.getElementById("trip-hours").value) || 3;
   
+  // Usar la misma lógica que en cTP() y cHP()
   const selectedVehicle = document.querySelector('.vehicle.selected');
-  const isSUV = selectedVehicle && selectedVehicle.id === 'cadillac';
-  const hourlyRate = isSUV ? PR.SUV_HR : PR.HR;
+  const isVehicleSelected = selectedVehicle !== null;
+  const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
+  
+  // Si no hay vehículo seleccionado, usar tarifas SUV
+  const hourlyRate = isVehicleSelected ? (isSUV ? PR.SUV_HR : PR.HR) : PR.SUV_HR;
   
   const total = hours * hourlyRate;
   
+  // Actualizar todos los elementos visuales
   document.getElementById("fixed-hours-display").textContent = hours;
   document.getElementById("fixed-rate").textContent = hourlyRate.toFixed(2);
   document.getElementById("fixed-price").textContent = (hours * hourlyRate).toFixed(2);
   document.getElementById("fixed-total").textContent = total.toFixed(2);
   
+  // Actualizar el precio del botón de checkout
   if (document.getElementById("checkout-button")) {
     document.getElementById("checkout-button").setAttribute("data-price", total.toFixed(2));
   }
   
+  // Guardar detalles para consistencia
   lPDet = {
     baseFare: hours * hourlyRate,
     total: total,
     details: {
       hours: hours,
-      hourlyRate: hourlyRate
+      hourlyRate: hourlyRate,
+      isVehicleSelected: isVehicleSelected,
+      isSUV: isSUV
     }
   };
   
-  console.log("Updated hourly price:", total.toFixed(2));
+  console.log("✅ Updated hourly price:", total.toFixed(2), 
+             "Rate:", hourlyRate, 
+             "Vehicle:", isVehicleSelected ? (isSUV ? "SUV" : "Sedan") : "Default SUV");
 }
 function aPL(){setupPassengerListeners();}
 function fBD(e){const noStopsMessage="  • Direct route with no stops",n=e.priceDetails||{},bookingTypeLabel="transfer"===e.bookingType?"AIRPORT TRANSFER":"HOURLY";let flightInfo="";if("transfer"===e.bookingType){e.flightInfo&&(flightInfo+=`\nArrival Flight Info: • Airline: ${e.flightInfo.airline} • Flight Number: ${e.flightInfo.flightNumber} • Flight Time: ${e.flightInfo.flightTime||"Not provided"}`);e.departureInfo&&(flightInfo+=`\nDeparture Flight Info:  • Airline: ${e.departureInfo.airline}  • Flight Number: ${e.departureInfo.flightNumber}  • Flight Time: ${e.departureInfo.flightTime||"Not provided"}`);}const o=n&&n.total?`Price Breakdown:- Base Fare: ${(n.baseFare||0).toFixed(2)}${n.distanceCost!==void 0?`• Distance Cost: ${n.distanceCost.toFixed(2)}\n`:""}${n.timeCost!==void 0?`• Time Cost: ${n.timeCost.toFixed(2)}\n`:""}${n.airportFee>0?`• Airport Fee: ${n.airportFee.toFixed(2)}\n`:""}- Service Fee: ${(n.serviceFee||0).toFixed(2)}- Tax: ${(n.tax||0).toFixed(2)}Total: ${(n.total||0).toFixed(2)}`:"";return`Booking ConfirmationDate: ${e.bookingDate||"N/A"}Time: ${e.bookingTime||"N/A"}Booking Type: ${bookingTypeLabel}${flightInfo}${"hourly"===e.bookingType?`Hours: ${e.hourly?.hours||"N/A"}Itinerary: ${e.itinerary||"N/A"}`:`Special Request: ${e.specialRequest||"N/A"}`}Pickup: ${e.pickup||e.transfer?.pickup||"N/A"}Dropoff: ${e.dropoff||e.transfer?.dropoff||"N/A"}Route:${noStopsMessage}${"hourly"!==e.bookingType?`Passengers: ${e.passengers?.total||1} (Adults: ${e.passengers?.adults||1}, Kids: ${e.passengers?.kids||0})`:""}Luggage: ${e.passengers?.luggage||0}Phone: ${e.contact?.phone||"N/A"}Email: ${e.contact?.email||"N/A"}Vehicle: ${e.vehicle?e.vehicle.type:"Not Selected"}${o}`;}
@@ -2021,6 +2140,278 @@ function getCurrentRouteStatus() {
 }
 
 window.getCurrentRouteStatus = getCurrentRouteStatus;
+
+function validatePriceConsistency() {
+  console.log("=== 🔍 VALIDACIÓN DE CONSISTENCIA DE PRECIOS ===");
+  
+  // Obtener información básica del estado actual
+  const bookingType = document.getElementById("booking-type").value;
+  const checkoutButton = document.getElementById("checkout-button");
+  const checkoutPrice = checkoutButton ? parseFloat(checkoutButton.getAttribute("data-price")) : null;
+  const priceContainer = document.getElementById("price-breakdown");
+  
+  console.log("📋 ESTADO GENERAL:");
+  console.log("   Tipo de reserva:", bookingType);
+  console.log("   Precio en botón checkout:", checkoutPrice ? "$" + checkoutPrice.toFixed(2) : "❌ No establecido");
+  console.log("   Contenedor de precio visible:", priceContainer && priceContainer.innerHTML.trim() !== "" ? "✅ SÍ" : "❌ NO");
+  
+  // Variables para seguimiento de consistencia
+  let consistencyIssues = [];
+  let allGood = true;
+  
+  // VALIDACIÓN ESPECÍFICA PARA RESERVAS POR HORA
+  if (bookingType === "hourly") {
+    console.log("\n💰 VALIDACIÓN DE PRECIO POR HORA:");
+    
+    // Obtener datos del formulario
+    const hours = parseInt(document.getElementById("trip-hours").value) || 3;
+    const selectedVehicle = document.querySelector('.vehicle.selected');
+    const isVehicleSelected = selectedVehicle !== null;
+    const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
+    
+    // Calcular precio esperado
+    const hourlyRate = isVehicleSelected ? (isSUV ? PR.SUV_HR : PR.HR) : PR.SUV_HR;
+    const expectedPrice = hours * hourlyRate;
+    
+    console.log("   📊 Cálculo esperado:");
+    console.log("     Horas:", hours);
+    console.log("     Vehículo seleccionado:", isVehicleSelected ? "✅ SÍ" : "❌ NO");
+    console.log("     Tipo de vehículo:", isVehicleSelected ? (isSUV ? "SUV (Cadillac)" : "Sedan/Truck (Toyota)") : "Por defecto (SUV)");
+    console.log("     Tarifa por hora:", "$" + hourlyRate.toFixed(2));
+    console.log("     Precio esperado:", "$" + expectedPrice.toFixed(2));
+    console.log("     Precio en botón:", checkoutPrice ? "$" + checkoutPrice.toFixed(2) : "❌ No establecido");
+    
+    // Verificar consistencia del botón
+    const buttonConsistent = checkoutPrice && Math.abs(expectedPrice - checkoutPrice) < 0.01;
+    console.log("     ✅ Botón consistente:", buttonConsistent ? "SÍ" : "❌ NO");
+    if (!buttonConsistent) {
+      consistencyIssues.push(`Botón checkout: esperado $${expectedPrice.toFixed(2)}, actual $${(checkoutPrice || 0).toFixed(2)}`);
+      allGood = false;
+    }
+    
+    // Verificar elementos visuales del precio fijo
+    const fixedPriceBox = document.getElementById("fixed-hourly-price");
+    if (fixedPriceBox && fixedPriceBox.style.display !== "none") {
+      console.log("\n   🖼️ ELEMENTOS VISUALES:");
+      
+      const fixedHours = document.getElementById("fixed-hours-display").textContent;
+      const fixedRate = document.getElementById("fixed-rate").textContent;
+      const fixedPrice = document.getElementById("fixed-price").textContent;
+      const fixedTotal = document.getElementById("fixed-total").textContent;
+      
+      console.log("     Horas mostradas:", fixedHours);
+      console.log("     Tarifa mostrada:", "$" + fixedRate);
+      console.log("     Precio mostrado:", "$" + fixedPrice);
+      console.log("     Total mostrado:", "$" + fixedTotal);
+      
+      // Validar cada elemento
+      const hoursConsistent = fixedHours == hours;
+      const rateConsistent = Math.abs(parseFloat(fixedRate) - hourlyRate) < 0.01;
+      const priceConsistent = Math.abs(parseFloat(fixedPrice) - expectedPrice) < 0.01;
+      const totalConsistent = Math.abs(parseFloat(fixedTotal) - expectedPrice) < 0.01;
+      
+      console.log("     ✅ Horas consistentes:", hoursConsistent ? "SÍ" : "❌ NO");
+      console.log("     ✅ Tarifa consistente:", rateConsistent ? "SÍ" : "❌ NO");
+      console.log("     ✅ Precio consistente:", priceConsistent ? "SÍ" : "❌ NO");
+      console.log("     ✅ Total consistente:", totalConsistent ? "SÍ" : "❌ NO");
+      
+      if (!hoursConsistent) {
+        consistencyIssues.push(`Horas visuales: esperado ${hours}, mostrado ${fixedHours}`);
+        allGood = false;
+      }
+      if (!rateConsistent) {
+        consistencyIssues.push(`Tarifa visual: esperado $${hourlyRate.toFixed(2)}, mostrado $${fixedRate}`);
+        allGood = false;
+      }
+      if (!priceConsistent) {
+        consistencyIssues.push(`Precio visual: esperado $${expectedPrice.toFixed(2)}, mostrado $${fixedPrice}`);
+        allGood = false;
+      }
+      if (!totalConsistent) {
+        consistencyIssues.push(`Total visual: esperado $${expectedPrice.toFixed(2)}, mostrado $${fixedTotal}`);
+        allGood = false;
+      }
+    } else {
+      console.log("   ⚠️ Caja de precio fijo no visible");
+      consistencyIssues.push("Caja de precio fijo no está visible para reserva por hora");
+      allGood = false;
+    }
+  }
+  
+  // VALIDACIÓN PARA TRANSFER Y POINT-TO-POINT
+  else if (bookingType === "transfer" || bookingType === "point-to-point") {
+    console.log("\n🚗 VALIDACIÓN DE PRECIO POR RUTA:");
+    
+    const pickup = document.getElementById("pickup").value;
+    const dropoff = document.getElementById("dropoff").value;
+    
+    console.log("   📍 Información de ruta:");
+    console.log("     Pickup:", pickup || "❌ No especificado");
+    console.log("     Dropoff:", dropoff || "❌ No especificado");
+    
+    if (!pickup || !dropoff) {
+      console.log("   ⚠️ Ruta incompleta - no se puede validar precio");
+      consistencyIssues.push("Ruta incompleta para validación de precio");
+      allGood = false;
+    } else {
+      // Verificar si hay datos de ruta disponibles
+      if (routeData && routeData.totalSeconds) {
+        console.log("   📊 Datos de ruta disponibles:");
+        console.log("     Distancia:", routeData.totalDistanceMeters ? (routeData.totalDistanceMeters / 1609.34).toFixed(2) + " millas" : "No disponible");
+        console.log("     Tiempo:", routeData.durationTexts ? routeData.durationTexts.join(' + ') : "No disponible");
+        console.log("     Segundos totales:", routeData.totalSeconds);
+        
+        // Verificar vehículo seleccionado
+        const selectedVehicle = document.querySelector('.vehicle.selected');
+        const isVehicleSelected = selectedVehicle !== null;
+        const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
+        
+        console.log("     Vehículo seleccionado:", isVehicleSelected ? "✅ SÍ" : "❌ NO");
+        console.log("     Tipo:", isVehicleSelected ? (isSUV ? "SUV" : "Sedan/Truck") : "Por defecto");
+        
+        if (!isVehicleSelected) {
+          consistencyIssues.push("No hay vehículo seleccionado para cálculo de precio");
+          allGood = false;
+        }
+      } else {
+        console.log("   ❌ No hay datos de ruta disponibles");
+        consistencyIssues.push("Faltan datos de ruta para validación de precio");
+        allGood = false;
+      }
+    }
+  }
+  
+  // VALIDACIÓN DE DATOS INTERNOS (lPDet)
+  console.log("\n📊 VALIDACIÓN DE DATOS INTERNOS:");
+  if (lPDet && typeof lPDet === 'object') {
+    console.log("   ✅ Objeto lPDet existe");
+    console.log("   Total interno:", lPDet.total ? "$" + lPDet.total.toFixed(2) : "❌ No definido");
+    
+    if (lPDet.total && checkoutPrice) {
+      const internalConsistent = Math.abs(lPDet.total - checkoutPrice) < 0.01;
+      console.log("   ✅ Consistencia interna:", internalConsistent ? "SÍ" : "❌ NO");
+      
+      if (!internalConsistent) {
+        consistencyIssues.push(`Datos internos inconsistentes: lPDet $${lPDet.total.toFixed(2)} vs botón $${checkoutPrice.toFixed(2)}`);
+        allGood = false;
+      }
+    }
+    
+    // Mostrar detalles de lPDet si están disponibles
+    if (lPDet.details) {
+      console.log("   📋 Detalles disponibles:");
+      console.log("     Horas:", lPDet.details.hours || "N/A");
+      console.log("     Tarifa por hora:", lPDet.details.hourlyRate ? "$" + lPDet.details.hourlyRate.toFixed(2) : "N/A");
+      console.log("     Millas:", lPDet.details.miles ? lPDet.details.miles.toFixed(2) : "N/A");
+      console.log("     Minutos:", lPDet.details.totalMinutes || "N/A");
+      console.log("     Tipo de vehículo:", lPDet.details.vehicleType || "N/A");
+    }
+  } else {
+    console.log("   ❌ Objeto lPDet no existe o está vacío");
+    consistencyIssues.push("Faltan datos internos de precio (lPDet)");
+    allGood = false;
+  }
+  
+  // VALIDACIÓN DEL CONTENEDOR DE PRECIO
+  console.log("\n🖼️ VALIDACIÓN DE VISUALIZACIÓN:");
+  if (priceContainer) {
+    const hasContent = priceContainer.innerHTML.trim() !== "";
+    const hasLoadingIndicator = priceContainer.innerHTML.includes("price-loading");
+    const hasPriceDetails = priceContainer.innerHTML.includes("price-details");
+    
+    console.log("   Contenedor tiene contenido:", hasContent ? "✅ SÍ" : "❌ NO");
+    console.log("   Mostrando indicador de carga:", hasLoadingIndicator ? "⏳ SÍ" : "✅ NO");
+    console.log("   Mostrando detalles de precio:", hasPriceDetails ? "✅ SÍ" : "❌ NO");
+    
+    if (!hasContent) {
+      consistencyIssues.push("Contenedor de precio está vacío");
+      allGood = false;
+    }
+    
+    if (hasLoadingIndicator) {
+      consistencyIssues.push("Precio aún se está calculando (mostrando indicador de carga)");
+      allGood = false;
+    }
+  } else {
+    console.log("   ❌ Contenedor de precio no encontrado");
+    consistencyIssues.push("Contenedor de precio no encontrado en DOM");
+    allGood = false;
+  }
+  
+  // VALIDACIÓN DE FUNCIONES NECESARIAS
+  console.log("\n🔧 VALIDACIÓN DE FUNCIONES:");
+  const requiredFunctions = [
+    'getOptimalDepartureTime',
+    'cRD',
+    'cTP',
+    'updateFixedHourlyPrice',
+    'dMU'
+  ];
+  
+  requiredFunctions.forEach(functionName => {
+    const exists = typeof window[functionName] === 'function';
+    console.log(`   ${functionName}:`, exists ? "✅ OK" : "❌ FALTA");
+    if (!exists) {
+      consistencyIssues.push(`Función ${functionName} no encontrada`);
+      allGood = false;
+    }
+  });
+  
+  // VALIDACIÓN DE VARIABLES GLOBALES
+  console.log("\n🌐 VALIDACIÓN DE VARIABLES GLOBALES:");
+  console.log("   routeData:", routeData ? "✅ Disponible" : "❌ No disponible");
+  console.log("   selectedDepartureTime:", window.selectedDepartureTime ? "✅ Configurado" : "⚠️ No configurado");
+  console.log("   PR (tarifas):", typeof PR === 'object' ? "✅ Disponible" : "❌ No disponible");
+  
+  if (!routeData && (bookingType === "transfer" || bookingType === "point-to-point")) {
+    consistencyIssues.push("routeData no disponible para tipo de reserva que requiere ruta");
+    allGood = false;
+  }
+  
+  // RESUMEN FINAL
+  console.log("\n" + "=".repeat(50));
+  console.log("🎯 RESUMEN DE VALIDACIÓN:");
+  console.log("   Estado general:", allGood ? "✅ TODO CORRECTO" : "❌ PROBLEMAS ENCONTRADOS");
+  console.log("   Número de problemas:", consistencyIssues.length);
+  
+  if (consistencyIssues.length > 0) {
+    console.log("\n🚨 PROBLEMAS ENCONTRADOS:");
+    consistencyIssues.forEach((issue, index) => {
+      console.log(`   ${index + 1}. ${issue}`);
+    });
+    
+    console.log("\n💡 RECOMENDACIONES:");
+    if (consistencyIssues.some(issue => issue.includes("vehículo"))) {
+      console.log("   • Selecciona un vehículo antes de continuar");
+    }
+    if (consistencyIssues.some(issue => issue.includes("ruta"))) {
+      console.log("   • Completa la información de pickup y dropoff");
+      console.log("   • Espera a que se calculen los datos de ruta");
+    }
+    if (consistencyIssues.some(issue => issue.includes("función"))) {
+      console.log("   • Verifica que todas las funciones necesarias están implementadas");
+    }
+    if (consistencyIssues.some(issue => issue.includes("botón"))) {
+      console.log("   • Ejecuta updateFixedHourlyPrice() o dMU() para recalcular");
+    }
+  } else {
+    console.log("\n🎉 ¡EXCELENTE! Todos los precios están sincronizados correctamente.");
+  }
+  
+  console.log("=".repeat(50));
+  
+  // Retornar objeto con resultados para uso programático
+  return {
+    isConsistent: allGood,
+    issues: consistencyIssues,
+    bookingType: bookingType,
+    checkoutPrice: checkoutPrice,
+    hasRouteData: !!routeData,
+    hasVehicleSelected: !!document.querySelector('.vehicle.selected'),
+    lPDetExists: !!(lPDet && lPDet.total)
+  };
+}
+
 function validateTimeSync() {
   console.log("=== ✅ VALIDACIÓN DE SINCRONIZACIÓN ===");
   
