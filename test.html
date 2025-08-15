@@ -1654,40 +1654,13 @@ async function cTP(origin, destination, stops, passengers) {
     const totalSeconds = routeData.totalSeconds;
     
     // Añadir buffer de 2 minutos (120 segundos) al tiempo total
-    const adjustedTotalSeconds = totalSeconds + 120;
-    const totalMinutes = Math.round(adjustedTotalSeconds / 60);
+    const totalMinutes = Math.round(totalSeconds / 60);
     
     console.log("⏰ Procesando tiempos:");
-    console.log("   Segundos originales:", totalSeconds);
-    console.log("   Segundos con buffer (+2 min):", adjustedTotalSeconds);
+    console.log("   Segundos totales:", totalSeconds);
     console.log("   Minutos totales para pricing:", totalMinutes);
-    console.log("   Google Maps duración original:", googleDurationText);
+    console.log("   Google Maps duración:", googleDurationText);
     
-    // Crear texto de duración ajustado con los 2 minutos extra
-    let adjustedDurationText = googleDurationText;
-    if (googleDurationText && googleDurationText.includes("min")) {
-      // Extraer números del texto de duración
-      const minutesMatch = googleDurationText.match(/(\d+) min/);
-      const hoursMatch = googleDurationText.match(/(\d+) hour/);
-      
-      if (minutesMatch) {
-        const minutes = parseInt(minutesMatch[1]) + 2;
-        if (hoursMatch) {
-          // Formato: "X hour(s) Y min"
-          const hours = parseInt(hoursMatch[1]);
-          adjustedDurationText = `${hours} hour${hours > 1 ? 's' : ''} ${minutes} min`;
-        } else {
-          // Formato: "Y min"
-          adjustedDurationText = `${minutes} min`;
-        }
-      } else if (hoursMatch) {
-        // Formato: "X hour(s)" (sin minutos)
-        const hours = parseInt(hoursMatch[1]);
-        adjustedDurationText = `${hours} hour${hours > 1 ? 's' : ''} 2 min`;
-      }
-    }
-    
-    console.log("   Duración ajustada mostrada:", adjustedDurationText);
     
     // Determinar el vehículo seleccionado y sus tarifas
     const selectedVehicle = document.querySelector('.vehicle.selected');
@@ -1730,11 +1703,9 @@ async function cTP(origin, destination, stops, passengers) {
     
     console.log("📏 DATOS DE RUTA:");
     console.log("   Distancia total:", totalMiles.toFixed(2), "millas");
-    console.log("   Duración original Google Maps:", googleDurationText);
-    console.log("   Duración ajustada (+2 min):", adjustedDurationText);
-    console.log("   Segundos totales (originales):", totalSeconds);
-    console.log("   Segundos totales (ajustados):", adjustedTotalSeconds);
-    console.log("   Minutos totales para pricing:", totalMinutes);
+    console.log("   Duración Google Maps:", googleDurationText);
+    console.log("   Segundos totales:", totalSeconds);
+    console.log("   Minutos totales para pricing:", totalMinutes); 
     console.log("   Distancia Google Maps:", googleDistanceText);
     
     console.log("🚗 VEHÍCULO Y TARIFAS:");
@@ -1757,8 +1728,7 @@ async function cTP(origin, destination, stops, passengers) {
     
     console.log("⏰ INFORMACIÓN DE TIEMPO:");
     console.log("   Tiempo de salida para ruta:", departureTimeForRoute.toLocaleString());
-    console.log("   Tiempo estimado de llegada:", new Date(departureTimeForRoute.getTime() + (adjustedTotalSeconds * 1000)).toLocaleString());
-    console.log("   Usando tráfico en tiempo real:", routeDetails.timeInfo ? (routeDetails.timeInfo.shouldUseCurrentTraffic ? "SÍ" : "NO") : "No disponible");
+    console.log("   Tiempo estimado de llegada:", new Date(departureTimeForRoute.getTime() + (totalSeconds * 1000)).toLocaleString());    console.log("   Usando tráfico en tiempo real:", routeDetails.timeInfo ? (routeDetails.timeInfo.shouldUseCurrentTraffic ? "SÍ" : "NO") : "No disponible");
     
     console.log("=====================================");
     
@@ -1777,11 +1747,9 @@ async function cTP(origin, destination, stops, passengers) {
         // Datos de ruta
         miles: totalMiles,
         googleDurationText: googleDurationText,
-        adjustedDurationText: adjustedDurationText, // Almacenar ambos: original y ajustado
         googleDistanceText: googleDistanceText,
-        totalSeconds: adjustedTotalSeconds, // Usar segundos ajustados
-        totalMinutes: totalMinutes, // Usar minutos ajustados
-        originalSeconds: totalSeconds, // Mantener referencia a tiempo original
+        totalSeconds: totalSeconds,
+        totalMinutes: totalMinutes,
         
         // Datos de tarifas
         pricePerMinute: ratePerMinute,
@@ -1801,7 +1769,7 @@ async function cTP(origin, destination, stops, passengers) {
         // Datos de tiempo
         useTrafficTime: true,
         departureTime: departureTimeForRoute,
-        arrivalTime: new Date(departureTimeForRoute.getTime() + (adjustedTotalSeconds * 1000)), // Tiempo de llegada ajustado
+        arrivalTime: new Date(departureTimeForRoute.getTime() + (totalSeconds * 1000)),
         
         // Datos de ruta completos
         legs: routeDetails.legs || [],
