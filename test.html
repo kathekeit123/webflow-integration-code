@@ -156,7 +156,7 @@ html[data-booking-type="hourly"] #luggage-container {display: none !important;}
 <script>
 let routeData = null;
 let stopCount = 0;
-let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:12,RM:3,PMN:.75,PP:0,SFR:.05,TR:.0975,AF:0,HR:95,MR:95/60,SUV_BF:30,SUV_RM:5.35,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
+let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:22.50,RM:4.00,PMN:1.00,PP:0,SFR:.05,TR:.0975,AF:0,HR:95,MR:95/60,SUV_BF:30,SUV_RM:5.35,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 let debounceTimer;
 let isGoogleMapsReady = false;
 let mapInitialized = false;
@@ -1047,7 +1047,14 @@ async function hS(e){
     });
     
     if(!paymentResponse.ok){
-      throw new Error(`Square checkout failed: ${await paymentResponse.text()}`);
+      let errorText;
+      try {
+        errorText = await paymentResponse.text();
+      } catch(e) {
+        errorText = `HTTP ${paymentResponse.status} - ${paymentResponse.statusText}`;
+      }
+      console.error("Square API Error:", errorText);
+      throw new Error(`Square checkout failed: ${errorText}`);
     }
     
     const paymentResult = await paymentResponse.json();
@@ -1345,9 +1352,6 @@ function buildOptimizedMapSrc(pickup, dropoff, stops = []) {
   
   mapSrc += '&mode=driving';
   
-  // ✅ Eliminamos las líneas problemáticas:
-  // mapSrc += '&avoid='; // ❌ Línea que causaba el error
-  // mapSrc += '&units=imperial'; // ❌ También problemática
   
   console.log("🗺️ URL del mapa construida:", mapSrc);
   return mapSrc;
@@ -1556,12 +1560,15 @@ function cRD(origin, destination, stops = []) {
     
     // Configuración base de la solicitud
     const request = {
-      origin: origin,
-      destination: destination,
-      waypoints: waypoints,
-      travelMode: google.maps.TravelMode.DRIVING,
-      provideRouteAlternatives: false
-    };
+  origin: origin,
+  destination: destination,
+  waypoints: waypoints,
+  travelMode: google.maps.TravelMode.DRIVING,
+  provideRouteAlternatives: true,  // Obtener múltiples rutas
+  optimizeWaypoints: false,         // No optimizar el orden de waypoints
+  avoidHighways: false,            // Permitir autopistas
+  avoidTolls: false               // Permitir peajes
+};
     
     // Solo añadir drivingOptions si no estamos usando tiempo actual
     if (!timeInfo.shouldUseCurrentTraffic) {
@@ -1577,7 +1584,23 @@ function cRD(origin, destination, stops = []) {
     return new Promise((resolve, reject) => {
       directionsService.route(request, function(result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
-          const legs = result.routes[0].legs;
+          // Usar la ruta más corta en distancia, no necesariamente la más rápida en tiempo
+          let selectedRoute = result.routes[0];
+          
+          // Si hay múltiples rutas, seleccionar la que tenga menor distancia
+          if (result.routes.length > 1) {
+            let fastestTime = Infinity;
+            for (let route of result.routes) {
+              const routeTime = route.legs.reduce((sum, leg) => sum + leg.duration.value, 0);
+              if (routeTime < fastestTime) {
+                fastestTime = routeTime;
+                selectedRoute = route;
+              }
+            }
+            console.log(`Seleccionada la ruta más rápida de ${result.routes.length} opciones disponibles`);
+          }
+          
+          const legs = selectedRoute.legs;
           const distanceTexts = legs.map(leg => leg.distance.text);
           const durationTexts = legs.map(leg => leg.duration.text);
           const totalDistanceMeters = legs.reduce((sum, leg) => sum + leg.distance.value, 0);
@@ -1805,22 +1828,15 @@ function uPD(priceDetails) {
   const priceContainer = document.getElementById("price-breakdown");
   
   if (bookingType === "hourly") {
-    const hours = priceDetails.details.hours || 3;
-    const hourlyRate = PR.HR;
-    const total = priceDetails.total;
+    // Para modo hourly, NO actualizar el price-breakdown
+    // Solo limpiar el contenedor para evitar información obsoleta de otros modos
+    priceContainer.innerHTML = '';
     
-    priceContainer.innerHTML = `
-      <div class="price-details">
-        <h3><i class="fas fa-file-invoice-dollar"></i> Hourly Rate</h3>
-        <div class="price-item total">
-          <span><i class="fas fa-money-check-alt"></i> Total:</span>
-          <span>$${total.toFixed(2)}</span>
-        </div>
-      </div>`;
+    // El precio fijo ya se maneja con updateFixedHourlyPrice()
+    // y el elemento #fixed-hourly-price que está en el HTML
+    
   } else if (bookingType === "transfer" || bookingType === "point-to-point") {
-    const originalDurationText = priceDetails.details.googleDurationText || "";
-    const adjustedDurationText = priceDetails.details.adjustedDurationText || originalDurationText;
-    const googleDistanceText = priceDetails.details.googleDistanceText || "";
+    // Para transfer y point-to-point, mostrar el desglose completo
     const serviceTitle = bookingType === "transfer" ? "Airport Transfer Pricing" : "Point-to-Point Pricing";
     
     priceContainer.innerHTML = `
@@ -1832,7 +1848,7 @@ function uPD(priceDetails) {
           <div class="price-summary-content">
             <div class="price-item total">
               <span><i class="fas fa-money-check-alt"></i> Total:</span>
-              <span>$${priceDetails.total.toFixed(2)}</span>
+              <span>${priceDetails.total.toFixed(2)}</span>
             </div>
             <div class="more-details-toggle">
               <span>More details</span>
@@ -1846,38 +1862,40 @@ function uPD(priceDetails) {
           <div class="price-breakdown-content">
             <div class="price-item">
               <span><i class="fas fa-car"></i> Base Fare:</span>
-              <span>$${priceDetails.baseFare.toFixed(2)}</span>
+              <span>${priceDetails.baseFare.toFixed(2)}</span>
             </div>
             <div class="price-item">
               <span><i class="fas fa-route"></i> Distance Cost:</span>
-              <span>$${priceDetails.distanceCost.toFixed(2)}</span>
+              <span>${priceDetails.distanceCost.toFixed(2)}</span>
             </div>
             <div class="price-item">
               <span><i class="fas fa-clock"></i> Time Cost:</span>
-              <span>$${priceDetails.timeCost.toFixed(2)}</span>
+              <span>${priceDetails.timeCost.toFixed(2)}</span>
             </div>
             ${bookingType === "transfer" && priceDetails.airportFee > 0 ? 
               `<div class="price-item">
                 <span><i class="fas fa-plane"></i> Airport Fee:</span>
-                <span>$${priceDetails.airportFee.toFixed(2)}</span>
+                <span>${priceDetails.airportFee.toFixed(2)}</span>
               </div>` : ""}
             <div class="price-item">
               <span><i class="fas fa-tools"></i> Service Fee (5%):</span>
-              <span>$${priceDetails.serviceFee.toFixed(2)}</span>
+              <span>${priceDetails.serviceFee.toFixed(2)}</span>
             </div>
             <div class="price-item">
               <span><i class="fas fa-receipt"></i> Tax (9.75%):</span>
-              <span>$${priceDetails.tax.toFixed(2)}</span>
+              <span>${priceDetails.tax.toFixed(2)}</span>
             </div>
           </div>
         </div>
       </div>`;
   }
   
+  // Actualizar el precio en el botón de checkout para todos los modos
   if (priceDetails && priceDetails.total) {
     document.getElementById("checkout-button").setAttribute("data-price", priceDetails.total.toFixed(2));
   }
   
+  // Guardar los detalles del precio globalmente
   lPDet = priceDetails;
 }
 function updateFixedHourlyPrice() {
@@ -2536,8 +2554,8 @@ setTimeout(() => {
         <div id="vehicle-section" class="hidden vehicle-selection">
           <h2 style="color:white;">Select Your Vehicle</h2>
           <div class="vehicle" id="toyota" onclick="sV2('toyota')">
-            <img src="https://cdn.prod.website-files.com/678ac38b1f7c98624f37a131/67a41d53f214b5b75c685fcc_2.png" alt="Toyota Tundra">
-            <span>Premium Truck/Sedan</span><span class="price" id="toyota-price"></span>
+            <img src="https://cdn.prod.website-files.com/67bddfd2a3c844b17c688a52/67bddfd2a3c844b17c688b1e_Vehiculos%20(1).png" alt="Toyota Tundra">
+            <span>Premium Sedan</span><span class="price" id="toyota-price"></span>
           </div>
           <div class="vehicle" id="cadillac" onclick="sV2('cadillac')">
             <img src="https://cdn.prod.website-files.com/678ac38b1f7c98624f37a131/67b9871b16217532ab8642f9_Cadillac%20Escalade%20ESV.jpeg" alt="Cadillac Escalade ESV">
