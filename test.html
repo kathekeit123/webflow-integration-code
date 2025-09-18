@@ -156,7 +156,23 @@ html[data-booking-type="hourly"] #luggage-container {display: none !important;}
 <script>
 let routeData = null;
 let stopCount = 0;
-let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={BF:22.50,RM:4.00,PMN:1.00,PP:0,SFR:.05,TR:.0975,AF:0,HR:95,MR:95/60,SUV_BF:30,SUV_RM:5.35,SUV_PMN:1.00,SUV_HR:115},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
+let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={
+  BF:22.50,
+  RM:4.00,
+  PMN:1.00,
+  PP:0,
+  SFR:.05,
+  TR:.0975,
+  AF:0,
+  HR:95,
+  MR:95/60,
+  SUV_BF:30,
+  SUV_RM:5.35,
+  SUV_PMN:1.00,
+  SUV_HR:115,
+  MIN_FARE:50.00,    // NUEVA: Tarifa mínima de $50
+  MIN_DISTANCE:2.0   // NUEVA: Aplicar a viajes de 2 millas o menos
+},mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 let debounceTimer;
 let isGoogleMapsReady = false;
 let mapInitialized = false;
@@ -1694,7 +1710,6 @@ async function cTP(origin, destination, stops, passengers) {
     // Si no hay vehículo seleccionado, usar tarifas SUV (precio más alto) por defecto
     const baseFare = isVehicleSelected ? (isSUV ? PR.SUV_BF : PR.BF) : PR.SUV_BF;
     const ratePerMile = isVehicleSelected ? (isSUV ? PR.SUV_RM : PR.RM) : PR.SUV_RM;
-    // FIXED: Apply correct time rate based on vehicle
     const ratePerMinute = isVehicleSelected ? (isSUV ? PR.SUV_PMN : PR.PMN) : PR.SUV_PMN;    
 
     // Calcular costos individuales
@@ -1702,15 +1717,36 @@ async function cTP(origin, destination, stops, passengers) {
     const passengersKids = parseInt(document.getElementById("kids").value) || 0;
     const distanceCost = totalMiles * ratePerMile;
     const passengerCost = (document.getElementById("booking-type").value === "hourly") ? 0 : (passengersAdults + passengersKids) * PR.PP;
-    const timeCost = totalMinutes * ratePerMinute; // Usar tiempo ajustado para cálculo de costo
+    const timeCost = totalMinutes * ratePerMinute;
     
-    // Calcular subtotal y tarifas adicionales
+    // Calcular subtotal inicial
     let subtotal = baseFare + distanceCost + passengerCost + timeCost;
     const airportFee = (document.getElementById("booking-type").value === "transfer") ? PR.AF : 0;
     subtotal += airportFee;
     
-    const serviceFee = subtotal * PR.SFR;
-    const pretaxTotal = subtotal + serviceFee;
+    // ========== NUEVA LÓGICA: APLICAR TARIFA MÍNIMA ==========
+    let finalSubtotal = subtotal;
+    let minimumFareApplied = false;
+    
+    if (totalMiles <= PR.MIN_DISTANCE) {
+      // Si el subtotal es menor que la tarifa mínima, aplicar la tarifa mínima
+      if (subtotal < PR.MIN_FARE) {
+        finalSubtotal = PR.MIN_FARE;
+        minimumFareApplied = true;
+        
+        console.log("=== 🚨 TARIFA MÍNIMA APLICADA ===");
+        console.log("Distancia:", totalMiles.toFixed(2), "millas (≤", PR.MIN_DISTANCE, "millas)");
+        console.log("Subtotal calculado: $" + subtotal.toFixed(2));
+        console.log("Tarifa mínima: $" + PR.MIN_FARE.toFixed(2));
+        console.log("Usando tarifa mínima de $" + PR.MIN_FARE.toFixed(2));
+        console.log("============================");
+      }
+    }
+    // ========================================================
+    
+    // Continuar con el cálculo de tarifas adicionales usando el subtotal final
+    const serviceFee = finalSubtotal * PR.SFR;
+    const pretaxTotal = finalSubtotal + serviceFee;
     const tax = pretaxTotal * PR.TR;
     const total = pretaxTotal + tax;
     
@@ -1737,22 +1773,32 @@ async function cTP(origin, destination, stops, passengers) {
     console.log("   Tipo de vehículo:", isVehicleSelected ? (isSUV ? "SUV (Cadillac)" : "Sedan/Truck (Toyota)") : "Por defecto (SUV)");
     console.log("   Tarifa base:", "$" + baseFare.toFixed(2));
     console.log("   Tarifa por milla:", "$" + ratePerMile.toFixed(2));
-    console.log("   ⭐ TARIFA POR MINUTO:", "$" + ratePerMinute.toFixed(2));
+    console.log("   Tarifa por minuto:", "$" + ratePerMinute.toFixed(2));
     
     console.log("💵 COSTOS CALCULADOS:");
     console.log("   Tarifa base:", "$" + baseFare.toFixed(2));
     console.log("   Costo por distancia (" + totalMiles.toFixed(2) + " mi × $" + ratePerMile.toFixed(2) + "):", "$" + distanceCost.toFixed(2));
-    console.log("   ⭐ COSTO POR TIEMPO (" + totalMinutes + " min × $" + ratePerMinute.toFixed(2) + "):", "$" + timeCost.toFixed(2));
+    console.log("   Costo por tiempo (" + totalMinutes + " min × $" + ratePerMinute.toFixed(2) + "):", "$" + timeCost.toFixed(2));
     console.log("   Costo por pasajeros (" + (passengersAdults + passengersKids) + " × $" + PR.PP + "):", "$" + passengerCost.toFixed(2));
     console.log("   Tarifa de aeropuerto:", "$" + airportFee.toFixed(2));
-    console.log("   Subtotal:", "$" + subtotal.toFixed(2));
+    console.log("   Subtotal inicial:", "$" + subtotal.toFixed(2));
+    
+    // NUEVO LOGGING PARA TARIFA MÍNIMA
+    if (minimumFareApplied) {
+      console.log("   🚨 TARIFA MÍNIMA APLICADA:", "$" + PR.MIN_FARE.toFixed(2), "(distancia ≤", PR.MIN_DISTANCE, "millas)");
+      console.log("   Subtotal ajustado:", "$" + finalSubtotal.toFixed(2));
+    } else if (totalMiles <= PR.MIN_DISTANCE) {
+      console.log("   ✅ Distancia ≤", PR.MIN_DISTANCE, "millas, pero subtotal ya supera mínimo");
+    }
+    
     console.log("   Service Fee (5%):", "$" + serviceFee.toFixed(2));
     console.log("   Tax (9.75%):", "$" + tax.toFixed(2));
     console.log("   🎯 TOTAL FINAL:", "$" + total.toFixed(2));
     
     console.log("⏰ INFORMACIÓN DE TIEMPO:");
     console.log("   Tiempo de salida para ruta:", departureTimeForRoute.toLocaleString());
-    console.log("   Tiempo estimado de llegada:", new Date(departureTimeForRoute.getTime() + (totalSeconds * 1000)).toLocaleString());    console.log("   Usando tráfico en tiempo real:", routeDetails.timeInfo ? (routeDetails.timeInfo.shouldUseCurrentTraffic ? "SÍ" : "NO") : "No disponible");
+    console.log("   Tiempo estimado de llegada:", new Date(departureTimeForRoute.getTime() + (totalSeconds * 1000)).toLocaleString());
+    console.log("   Usando tráfico en tiempo real:", routeDetails.timeInfo ? (routeDetails.timeInfo.shouldUseCurrentTraffic ? "SÍ" : "NO") : "No disponible");
     
     console.log("=====================================");
     
@@ -1763,10 +1809,13 @@ async function cTP(origin, destination, stops, passengers) {
       timeCost: timeCost,
       passengerCost: passengerCost,
       airportFee: airportFee,
-      subtotal: subtotal,
+      subtotal: finalSubtotal, // Usar subtotal ajustado
       serviceFee: serviceFee,
       tax: tax,
       total: total,
+      // NUEVOS CAMPOS PARA TARIFA MÍNIMA
+      minimumFareApplied: minimumFareApplied,
+      originalSubtotal: subtotal,
       details: {
         // Datos de ruta
         miles: totalMiles,
@@ -1797,7 +1846,15 @@ async function cTP(origin, destination, stops, passengers) {
         
         // Datos de ruta completos
         legs: routeDetails.legs || [],
-        routeData: routeData, // Incluir datos completos de ruta para referencia
+        routeData: routeData,
+        
+        // NUEVOS CAMPOS PARA TARIFA MÍNIMA
+        minimumFareApplied: minimumFareApplied,
+        originalSubtotal: subtotal,
+        finalSubtotal: finalSubtotal,
+        minimumFare: PR.MIN_FARE,
+        minimumDistance: PR.MIN_DISTANCE,
+        distanceQualifiesForMinimum: totalMiles <= PR.MIN_DISTANCE,
         
         // Información adicional
         bookingType: document.getElementById("booking-type").value,
@@ -1806,7 +1863,7 @@ async function cTP(origin, destination, stops, passengers) {
         
         // Para debugging
         calculationTimestamp: new Date().toISOString(),
-        routeDetails: routeDetails // Mantener referencia completa
+        routeDetails: routeDetails
       }
     };
     
