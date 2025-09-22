@@ -173,6 +173,529 @@ let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={
   MIN_FARE:50.00,    // NUEVA: Tarifa mínima de $50
   MIN_DISTANCE:2.0   // NUEVA: Aplicar a viajes de 2 millas o menos
 },mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
+
+const POINT_TO_POINT_DISTANCE_PRICING = {
+  ranges: [
+    { min: 0, max: 2, sedanBaseFare: 76.00, suvBaseFare: 76.00 },
+    { min: 3, max: 10, sedanBaseFare: 76.00, suvBaseFare: 76.00 },
+    { min: 11, max: 15, sedanBaseFare: 86.00, suvBaseFare: 105.00 },
+    { min: 16, max: 20, sedanBaseFare: 105.00, suvBaseFare: 129.00 },
+    { min: 21, max: 30, sedanBaseFare: 119.00, suvBaseFare: 149.00 },
+    { min: 31, max: 40, sedanBaseFare: 133.00, suvBaseFare: 167.00 }
+  ],
+  // Para distancias mayores a 40 millas, usar el último rango
+  getBaseFareByDistance: function(miles, isSUV) {
+    console.log(`=== CALCULANDO PRECIO BASE POINT-TO-POINT ===`);
+    console.log(`Distancia: ${miles.toFixed(2)} millas`);
+    console.log(`Vehículo: ${isSUV ? 'SUV' : 'Sedan'}`);
+    
+    for (let range of this.ranges) {
+      if (miles >= range.min && miles <= range.max) {
+        const baseFare = isSUV ? range.suvBaseFare : range.sedanBaseFare;
+        console.log(`Rango encontrado: ${range.min}-${range.max} millas`);
+        console.log(`Precio base aplicado: $${baseFare.toFixed(2)}`);
+        console.log(`=============================================`);
+        return baseFare;
+      }
+    }
+    
+    // Si es mayor a 40 millas, usar el último rango
+    const lastRange = this.ranges[this.ranges.length - 1];
+    const baseFare = isSUV ? lastRange.suvBaseFare : lastRange.sedanBaseFare;
+    console.log(`Distancia > 40 millas, usando último rango`);
+    console.log(`Precio base aplicado: $${baseFare.toFixed(2)}`);
+    console.log(`=============================================`);
+    return baseFare;
+  }
+};
+
+const AREA_PRICING_CONFIG = {
+  // Nivel 1: Donelson - Precio especial más bajo ($76/$76)
+  donelson: {
+    name: "Donelson",
+    zipCodes: ["37214"],
+    keywords: ["donelson", "airport", "nashville international airport", "bna", "music valley"],
+    baseFare: 76.00,
+    suvBaseFare: 76.00,
+    level: 1
+  },
+
+  // Nivel 2: Precio medio-bajo ($81/$95)
+  downtown_core: {
+    name: "Downtown/Midtown/SoBro/Germantown/East Nashville",
+    zipCodes: ["37201", "37203", "37219", "37206", "37213"],
+    keywords: ["downtown", "midtown", "sobro", "germantown", "east nashville", 
+               "music city center", "bridgestone arena", "nissan stadium", "broadway", "the gulch"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  brentwood_north: {
+    name: "Brentwood North",
+    zipCodes: ["37027"],
+    keywords: ["brentwood north", "brentwood"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  green_hills: {
+    name: "Green Hills",
+    zipCodes: ["37215"],
+    keywords: ["green hills", "mall at green hills", "hillsboro pike"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  oak_hill: {
+    name: "Oak Hill",
+    zipCodes: ["37220"],
+    keywords: ["oak hill"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  west_end_vanderbilt: {
+    name: "West End / Vanderbilt",
+    zipCodes: ["37212"],
+    keywords: ["west end", "vanderbilt", "vanderbilt university", "music row"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  sylvan_park_charlotte: {
+    name: "Sylvan Park / Charlotte",
+    zipCodes: ["37209"],
+    keywords: ["sylvan park", "charlotte", "charlotte avenue"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  belle_meade: {
+    name: "Belle Meade",
+    zipCodes: ["37205"],
+    keywords: ["belle meade", "harding pike"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  forest_hills: {
+    name: "Forest Hills",
+    zipCodes: ["37215"],
+    keywords: ["forest hills"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+  crieve_hall: {
+    name: "Crieve Hall / South Nashville",
+    zipCodes: ["37211"],
+    keywords: ["crieve hall", "south nashville"],
+    baseFare: 81.00,
+    suvBaseFare: 95.00,
+    level: 2
+  },
+
+  // Nivel 3: Precio medio ($90/$110)
+  mt_juliet: {
+    name: "Mt. Juliet",
+    zipCodes: ["37122"],
+    keywords: ["mt juliet", "mount juliet", "mt. juliet"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+  hermitage: {
+    name: "Hermitage",
+    zipCodes: ["37076"],
+    keywords: ["hermitage"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+  bellevue: {
+    name: "Bellevue",
+    zipCodes: ["37221"],
+    keywords: ["bellevue"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+  madison: {
+    name: "Madison",
+    zipCodes: ["37115"],
+    keywords: ["madison"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+  inglewood: {
+    name: "Inglewood",
+    zipCodes: ["37216"],
+    keywords: ["inglewood"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+  priest_lake_antioch: {
+    name: "Priest Lake / Antioch",
+    zipCodes: ["37217", "37013"],
+    keywords: ["priest lake", "antioch"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+  bordeaux: {
+    name: "Bordeaux",
+    zipCodes: ["37218"],
+    keywords: ["bordeaux"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+  old_hickory: {
+    name: "Old Hickory",
+    zipCodes: ["37138"],
+    keywords: ["old hickory"],
+    baseFare: 90.00,
+    suvBaseFare: 110.00,
+    level: 3
+  },
+
+  // Nivel 4: Precio medio-alto ($105/$129)
+  hendersonville: {
+    name: "Hendersonville",
+    zipCodes: ["37075"],
+    keywords: ["hendersonville"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+  nolensville: {
+    name: "Nolensville",
+    zipCodes: ["37135"],
+    keywords: ["nolensville"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+  la_vergne: {
+    name: "La Vergne",
+    zipCodes: ["37086"],
+    keywords: ["la vergne", "lavergne"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+  joelton: {
+    name: "Joelton",
+    zipCodes: ["37080"],
+    keywords: ["joelton"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+  goodlettsville_davidson: {
+    name: "Goodlettsville (Davidson side)",
+    zipCodes: ["37072"],
+    keywords: ["goodlettsville davidson", "goodlettsville"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+  ashland_city: {
+    name: "Ashland City",
+    zipCodes: ["37015"],
+    keywords: ["ashland city"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+  kingston_springs: {
+    name: "Kingston Springs",
+    zipCodes: ["37082"],
+    keywords: ["kingston springs"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+  pegram: {
+    name: "Pegram",
+    zipCodes: ["37143"],
+    keywords: ["pegram"],
+    baseFare: 105.00,
+    suvBaseFare: 129.00,
+    level: 4
+  },
+
+  // Nivel 5: Precio alto ($119/$143)
+  franklin: {
+    name: "Franklin",
+    zipCodes: ["37064", "37067", "37069"],
+    keywords: ["franklin"],
+    baseFare: 119.00,
+    suvBaseFare: 143.00,
+    level: 5
+  },
+  lebanon: {
+    name: "Lebanon",
+    zipCodes: ["37087", "37090"],
+    keywords: ["lebanon"],
+    baseFare: 119.00,
+    suvBaseFare: 143.00,
+    level: 5
+  },
+  white_house: {
+    name: "White House",
+    zipCodes: ["37188"],
+    keywords: ["white house"],
+    baseFare: 119.00,
+    suvBaseFare: 143.00,
+    level: 5
+  },
+  pleasant_view: {
+    name: "Pleasant View",
+    zipCodes: ["37146"],
+    keywords: ["pleasant view"],
+    baseFare: 119.00,
+    suvBaseFare: 143.00,
+    level: 5
+  },
+  ridgetop: {
+    name: "Ridgetop",
+    zipCodes: ["37152"],
+    keywords: ["ridgetop"],
+    baseFare: 119.00,
+    suvBaseFare: 143.00,
+    level: 5
+  },
+
+  // Nivel 6: Precio muy alto ($124-138/$148-162)
+  smyrna: {
+    name: "Smyrna",
+    zipCodes: ["37167"],
+    keywords: ["smyrna"],
+    baseFare: 124.00,
+    suvBaseFare: 148.00,
+    level: 6
+  },
+  gallatin: {
+    name: "Gallatin",
+    zipCodes: ["37066"],
+    keywords: ["gallatin"],
+    baseFare: 133.00,
+    suvBaseFare: 157.00,
+    level: 6
+  },
+  springfield: {
+    name: "Springfield",
+    zipCodes: ["37172"],
+    keywords: ["springfield"],
+    baseFare: 133.00,
+    suvBaseFare: 157.00,
+    level: 6
+  },
+  watertown: {
+    name: "Watertown",
+    zipCodes: ["37184"],
+    keywords: ["watertown"],
+    baseFare: 133.00,
+    suvBaseFare: 157.00,
+    level: 6
+  },
+  murfreesboro: {
+    name: "Murfreesboro",
+    zipCodes: ["37128", "37129", "37130"],
+    keywords: ["murfreesboro"],
+    baseFare: 138.00,
+    suvBaseFare: 162.00,
+    level: 6
+  },
+
+  // Nivel 7: Precio máximo ($152/$176)
+  spring_hill: {
+    name: "Spring Hill",
+    zipCodes: ["37174"],
+    keywords: ["spring hill"],
+    baseFare: 152.00,
+    suvBaseFare: 176.00,
+    level: 7
+  },
+  thompsons_station: {
+    name: "Thompson's Station",
+    zipCodes: ["37179"],
+    keywords: ["thompson station", "thompsons station", "thompson's station"],
+    baseFare: 152.00,
+    suvBaseFare: 176.00,
+    level: 7
+  },
+
+  // Default (precio estándar original)
+  default: {
+    name: "Standard Area",
+    baseFare: 22.50,  // Original PR.BF
+    suvBaseFare: 30.00,  // Original PR.SUV_BF
+    level: 0
+  }
+};
+
+
+
+function extractZipCodeFromAddress(address) {
+  if (!address) return null;
+  
+  // Buscar códigos postales de 5 dígitos
+  const zipMatch = address.match(/\b\d{5}\b/);
+  return zipMatch ? zipMatch[0] : null;
+}
+
+function detectAreaByZipCode(zipCode) {
+  if (!zipCode) return null;
+  
+  console.log(`Buscando área por código postal: ${zipCode}`);
+  
+  for (const [areaKey, areaData] of Object.entries(AREA_PRICING_CONFIG)) {
+    if (areaKey === 'default') continue;
+    
+    if (areaData.zipCodes.includes(zipCode)) {
+      console.log(`Área detectada por ZIP ${zipCode}: ${areaData.name} (Nivel ${areaData.level})`);
+      return areaKey;
+    }
+  }
+  
+  console.log(`No se encontró área específica para ZIP ${zipCode}`);
+  return null;
+}
+
+function detectAreaByKeywords(address) {
+  if (!address) return null;
+  
+  const addressLower = address.toLowerCase();
+  console.log(`Buscando área por palabras clave en: "${addressLower}"`);
+  
+  // Ordenar por nivel de precio para dar prioridad a áreas más específicas
+  const sortedAreas = Object.entries(AREA_PRICING_CONFIG)
+    .filter(([key]) => key !== 'default')
+    .sort(([,a], [,b]) => a.level - b.level);
+  
+  for (const [areaKey, areaData] of sortedAreas) {
+    for (const keyword of areaData.keywords) {
+      if (addressLower.includes(keyword.toLowerCase())) {
+        console.log(`Área detectada por palabra clave "${keyword}": ${areaData.name} (Nivel ${areaData.level})`);
+        return areaKey;
+      }
+    }
+  }
+  
+  console.log(`No se encontró área por palabras clave`);
+  return null;
+}
+
+function detectAreaFromAddress(address) {
+  if (!address) return 'default';
+  
+  console.log(`Analizando dirección para detección de área: "${address}"`);
+  
+  // Primero intentar detección por código postal (más confiable)
+  const zipCode = extractZipCodeFromAddress(address);
+  if (zipCode) {
+    const areaByZip = detectAreaByZipCode(zipCode);
+    if (areaByZip) {
+      return areaByZip;
+    }
+  }
+  
+  // Luego intentar detección por palabras clave
+  const areaByKeyword = detectAreaByKeywords(address);
+  if (areaByKeyword) {
+    return areaByKeyword;
+  }
+  
+  console.log(`No se detectó área específica, usando precios estándar`);
+  return 'default';
+}
+
+function getAreaBasedPricing(pickup, dropoff, totalMiles = null) {
+  const bookingType = document.getElementById("booking-type").value;
+  
+  // Para Point-to-Point, usar precios por distancia
+  if (bookingType === "point-to-point") {
+    if (totalMiles === null) {
+      console.log("Point-to-Point detectado pero sin distancia - usando precios estándar temporalmente");
+      return {
+        area: 'point-to-point-pending',
+        baseFare: PR.BF,
+        suvBaseFare: PR.SUV_BF,
+        areaName: 'Point-to-Point (pending distance calculation)',
+        level: 0
+      };
+    }
+    
+    console.log("=== PRECIOS POINT-TO-POINT POR DISTANCIA ===");
+    const sedanBaseFare = POINT_TO_POINT_DISTANCE_PRICING.getBaseFareByDistance(totalMiles, false);
+    const suvBaseFare = POINT_TO_POINT_DISTANCE_PRICING.getBaseFareByDistance(totalMiles, true);
+    
+    return {
+      area: 'point-to-point-distance',
+      baseFare: sedanBaseFare,
+      suvBaseFare: suvBaseFare,
+      areaName: `Point-to-Point (${totalMiles.toFixed(1)} miles)`,
+      level: 0,
+      distanceMiles: totalMiles
+    };
+  }
+  
+  // Solo aplicar precios por área para Airport Transfer
+  if (bookingType !== "transfer") {
+    console.log("No es Airport Transfer, usando precios estándar");
+    return {
+      area: 'default',
+      baseFare: PR.BF,
+      suvBaseFare: PR.SUV_BF,
+      areaName: 'Standard',
+      level: 0
+    };
+  }
+  
+  // Resto del código existente para Airport Transfer...
+  console.log("=== DETECCIÓN DE PRECIOS POR ÁREA ===");
+  console.log(`Pickup: ${pickup}`);
+  console.log(`Dropoff: ${dropoff}`);
+  
+  const pickupArea = detectAreaFromAddress(pickup);
+  const dropoffArea = detectAreaFromAddress(dropoff);
+  
+  console.log(`Área pickup: ${pickupArea}`);
+  console.log(`Área dropoff: ${dropoffArea}`);
+  
+  let selectedArea = 'default';
+  
+  if (isBNAAirport(pickup)) {
+    selectedArea = dropoffArea;
+    console.log(`Pickup en aeropuerto detectado, usando área de dropoff: ${selectedArea}`);
+  } else if (isBNAAirport(dropoff)) {
+    selectedArea = pickupArea;
+    console.log(`Dropoff en aeropuerto detectado, usando área de pickup: ${selectedArea}`);
+  } else {
+    selectedArea = pickupArea;
+    console.log(`Ningún aeropuerto detectado, usando área de pickup: ${selectedArea}`);
+  }
+  
+  const areaConfig = AREA_PRICING_CONFIG[selectedArea] || AREA_PRICING_CONFIG.default;
+  
+  console.log(`Área seleccionada: ${selectedArea} (${areaConfig.name}) - Nivel ${areaConfig.level || 0}`);
+  console.log(`Precio base: $${areaConfig.baseFare.toFixed(2)}`);
+  console.log(`Precio base SUV: $${areaConfig.suvBaseFare.toFixed(2)}`);
+  console.log("==========================================");
+  
+  return {
+    area: selectedArea,
+    baseFare: areaConfig.baseFare,
+    suvBaseFare: areaConfig.suvBaseFare,
+    areaName: areaConfig.name,
+    level: areaConfig.level || 0
+  };
+}
+
 let debounceTimer;
 let isGoogleMapsReady = false;
 let mapInitialized = false;
@@ -1670,16 +2193,18 @@ function cRD(origin, destination, stops = []) {
     throw error;
   }
 }
+// ===== PASO 3: REEMPLAZAR COMPLETAMENTE LA FUNCIÓN cTP EXISTENTE =====
+
 async function cTP(origin, destination, stops, passengers) {
   try {
     // Obtener tiempo de salida para la ruta
     const departureTimeForRoute = window.selectedDepartureTime || new Date();
-    console.log("=== 🚀 INICIANDO CÁLCULO DE PRECIO ===");
-    console.log("📍 Llamando a cRD con:", origin, destination, stops);
+    console.log("=== INICIANDO CÁLCULO DE PRECIO ===");
+    console.log("Llamando a cRD con:", origin, destination, stops);
     
     // Obtener detalles de la ruta desde Google Maps
     const routeDetails = await cRD(origin, destination, stops);
-    console.log("✅ Detalles de ruta recibidos:", routeDetails);
+    console.log("Detalles de ruta recibidos:", routeDetails);
     
     // Validar que recibimos datos válidos
     if (!routeDetails || typeof routeDetails.totalMiles !== 'number') {
@@ -1691,50 +2216,62 @@ async function cTP(origin, destination, stops, passengers) {
     const googleDurationText = routeDetails.googleDurationText;
     const googleDistanceText = routeDetails.googleDistanceText;
     const totalSeconds = routeData.totalSeconds;
-    
-    // Añadir buffer de 2 minutos (120 segundos) al tiempo total
     const totalMinutes = Math.round(totalSeconds / 60);
 
-    console.log("⏰ Procesando tiempos:");
+    console.log("Procesando tiempos:");
     console.log("   Segundos totales:", totalSeconds);
     console.log("   Minutos totales para pricing:", totalMinutes);
     console.log("   Google Maps duración:", googleDurationText);
     
+    // Obtener precios apropiados según el tipo de booking
+    const bookingType = document.getElementById("booking-type").value;
+    const areaPricing = (bookingType === "transfer") ? 
+      getAreaBasedPricing(origin, destination) : 
+      (bookingType === "point-to-point") ?
+      getAreaBasedPricing(origin, destination, totalMiles) :
+      {
+        area: 'default',
+        baseFare: PR.BF,
+        suvBaseFare: PR.SUV_BF,
+        areaName: 'Standard',
+        level: 0
+      };
     
-    // Determinar el vehículo seleccionado y sus tarifas
+    // Determinar el vehículo seleccionado y aplicar tarifas por área
     const selectedVehicle = document.querySelector('.vehicle.selected');
     const isVehicleSelected = selectedVehicle !== null;
     const isSUV = isVehicleSelected && selectedVehicle.id === 'cadillac';
     
-    // Aplicar tarifas correctas según el tipo de vehículo
-    // Si no hay vehículo seleccionado, usar tarifas SUV (precio más alto) por defecto
-    const baseFare = isVehicleSelected ? (isSUV ? PR.SUV_BF : PR.BF) : PR.SUV_BF;
-    const ratePerMile = isVehicleSelected ? (isSUV ? PR.SUV_RM : PR.RM) : PR.SUV_RM;
-    const ratePerMinute = isVehicleSelected ? (isSUV ? PR.SUV_PMN : PR.PMN) : PR.SUV_PMN;    
+    // Usar tarifas base por área para Airport Transfers y por distancia para Point-to-Point
+    const baseFare = isVehicleSelected ? 
+      (isSUV ? areaPricing.suvBaseFare : areaPricing.baseFare) : 
+      areaPricing.suvBaseFare;
+    
+    // ELIMINADO: const ratePerMile = ...
+    // ELIMINADO: const ratePerMinute = ...
 
     // Calcular costos individuales
     const passengersAdults = parseInt(passengers) || 0;
     const passengersKids = parseInt(document.getElementById("kids").value) || 0;
-    const distanceCost = totalMiles * ratePerMile;
+    const distanceCost = 0; // ELIMINADO: totalMiles * ratePerMile;
     const passengerCost = (document.getElementById("booking-type").value === "hourly") ? 0 : (passengersAdults + passengersKids) * PR.PP;
-    const timeCost = totalMinutes * ratePerMinute;
+    const timeCost = 0; // ELIMINADO: totalMinutes * ratePerMinute;
     
     // Calcular subtotal inicial
     let subtotal = baseFare + distanceCost + passengerCost + timeCost;
     const airportFee = (document.getElementById("booking-type").value === "transfer") ? PR.AF : 0;
     subtotal += airportFee;
     
-    // ========== NUEVA LÓGICA: APLICAR TARIFA MÍNIMA ==========
+    // Aplicar lógica de tarifa mínima
     let finalSubtotal = subtotal;
     let minimumFareApplied = false;
     
     if (totalMiles <= PR.MIN_DISTANCE) {
-      // Si el subtotal es menor que la tarifa mínima, aplicar la tarifa mínima
       if (subtotal < PR.MIN_FARE) {
         finalSubtotal = PR.MIN_FARE;
         minimumFareApplied = true;
         
-        console.log("=== 🚨 TARIFA MÍNIMA APLICADA ===");
+        console.log("=== TARIFA MÍNIMA APLICADA ===");
         console.log("Distancia:", totalMiles.toFixed(2), "millas (≤", PR.MIN_DISTANCE, "millas)");
         console.log("Subtotal calculado: $" + subtotal.toFixed(2));
         console.log("Tarifa mínima: $" + PR.MIN_FARE.toFixed(2));
@@ -1742,133 +2279,104 @@ async function cTP(origin, destination, stops, passengers) {
         console.log("============================");
       }
     }
-    // ========================================================
     
-    // Continuar con el cálculo de tarifas adicionales usando el subtotal final
+    // Continuar con el cálculo de tarifas adicionales
     const serviceFee = finalSubtotal * PR.SFR;
     const pretaxTotal = finalSubtotal + serviceFee;
     const tax = pretaxTotal * PR.TR;
     const total = pretaxTotal + tax;
     
-    // LOGGING DETALLADO PARA DEBUGGING
-    console.log("=== 💰 CÁLCULO DE PRECIOS COMPLETO ===");
+    // LOGGING MEJORADO
+    console.log("=== CÁLCULO DE PRECIOS SIN TIEMPO/DISTANCIA ===");
     
-    console.log("📊 DATOS DE ENTRADA:");
-    console.log("   Origen:", origin);
-    console.log("   Destino:", destination);
-    console.log("   Paradas:", stops.length > 0 ? stops.join(', ') : "Ninguna");
-    console.log("   Pasajeros adultos:", passengersAdults);
-    console.log("   Pasajeros niños:", passengersKids);
-    console.log("   Total pasajeros:", passengersAdults + passengersKids);
+    if (bookingType === "transfer") {
+      console.log("ÁREA DETECTADA:", areaPricing.areaName, `(${areaPricing.area}) - Nivel ${areaPricing.level}`);
+      console.log("Precio base área:", "$" + areaPricing.baseFare.toFixed(2));
+      console.log("Precio base SUV área:", "$" + areaPricing.suvBaseFare.toFixed(2));
+      console.log("Precio base aplicado:", "$" + baseFare.toFixed(2));
+    } else if (bookingType === "point-to-point") {
+      console.log("POINT-TO-POINT POR DISTANCIA:");
+      console.log("Distancia de ruta:", totalMiles.toFixed(2), "millas");
+      console.log("Precio base Sedan:", "$" + areaPricing.baseFare.toFixed(2));
+      console.log("Precio base SUV:", "$" + areaPricing.suvBaseFare.toFixed(2));
+      console.log("Precio base aplicado:", "$" + baseFare.toFixed(2));
+    }
     
-    console.log("📏 DATOS DE RUTA:");
-    console.log("   Distancia total:", totalMiles.toFixed(2), "millas");
-    console.log("   Duración Google Maps:", googleDurationText);
-    console.log("   Segundos totales:", totalSeconds);
-    console.log("   Minutos totales para pricing:", totalMinutes); 
-    console.log("   Distancia Google Maps:", googleDistanceText);
-    
-    console.log("🚗 VEHÍCULO Y TARIFAS:");
-    console.log("   Vehículo seleccionado:", isVehicleSelected ? "SÍ" : "NO (usando SUV por defecto)");
-    console.log("   Tipo de vehículo:", isVehicleSelected ? (isSUV ? "SUV (Cadillac)" : "Sedan/Truck (Toyota)") : "Por defecto (SUV)");
+    console.log("COSTOS CALCULADOS:");
     console.log("   Tarifa base:", "$" + baseFare.toFixed(2));
-    console.log("   Tarifa por milla:", "$" + ratePerMile.toFixed(2));
-    console.log("   Tarifa por minuto:", "$" + ratePerMinute.toFixed(2));
-    
-    console.log("💵 COSTOS CALCULADOS:");
-    console.log("   Tarifa base:", "$" + baseFare.toFixed(2));
-    console.log("   Costo por distancia (" + totalMiles.toFixed(2) + " mi × $" + ratePerMile.toFixed(2) + "):", "$" + distanceCost.toFixed(2));
-    console.log("   Costo por tiempo (" + totalMinutes + " min × $" + ratePerMinute.toFixed(2) + "):", "$" + timeCost.toFixed(2));
+    console.log("   Costo por distancia: $0.00 (ELIMINADO)");
+    console.log("   Costo por tiempo: $0.00 (ELIMINADO)");
     console.log("   Costo por pasajeros (" + (passengersAdults + passengersKids) + " × $" + PR.PP + "):", "$" + passengerCost.toFixed(2));
     console.log("   Tarifa de aeropuerto:", "$" + airportFee.toFixed(2));
     console.log("   Subtotal inicial:", "$" + subtotal.toFixed(2));
     
-    // NUEVO LOGGING PARA TARIFA MÍNIMA
     if (minimumFareApplied) {
-      console.log("   🚨 TARIFA MÍNIMA APLICADA:", "$" + PR.MIN_FARE.toFixed(2), "(distancia ≤", PR.MIN_DISTANCE, "millas)");
+      console.log("   TARIFA MÍNIMA APLICADA:", "$" + PR.MIN_FARE.toFixed(2), "(distancia ≤", PR.MIN_DISTANCE, "millas)");
       console.log("   Subtotal ajustado:", "$" + finalSubtotal.toFixed(2));
-    } else if (totalMiles <= PR.MIN_DISTANCE) {
-      console.log("   ✅ Distancia ≤", PR.MIN_DISTANCE, "millas, pero subtotal ya supera mínimo");
     }
     
     console.log("   Service Fee (5%):", "$" + serviceFee.toFixed(2));
     console.log("   Tax (9.75%):", "$" + tax.toFixed(2));
-    console.log("   🎯 TOTAL FINAL:", "$" + total.toFixed(2));
+    console.log("   TOTAL FINAL:", "$" + total.toFixed(2));
+    console.log("================================================");
     
-    console.log("⏰ INFORMACIÓN DE TIEMPO:");
-    console.log("   Tiempo de salida para ruta:", departureTimeForRoute.toLocaleString());
-    console.log("   Tiempo estimado de llegada:", new Date(departureTimeForRoute.getTime() + (totalSeconds * 1000)).toLocaleString());
-    console.log("   Usando tráfico en tiempo real:", routeDetails.timeInfo ? (routeDetails.timeInfo.shouldUseCurrentTraffic ? "SÍ" : "NO") : "No disponible");
-    
-    console.log("=====================================");
-    
-    // Retornar objeto completo con todos los detalles
+    // Retornar objeto completo
     return {
       baseFare: baseFare,
-      distanceCost: distanceCost,
-      timeCost: timeCost,
+      distanceCost: 0, // CAMBIADO
+      timeCost: 0, // CAMBIADO
       passengerCost: passengerCost,
       airportFee: airportFee,
-      subtotal: finalSubtotal, // Usar subtotal ajustado
+      subtotal: finalSubtotal,
       serviceFee: serviceFee,
       tax: tax,
       total: total,
-      // NUEVOS CAMPOS PARA TARIFA MÍNIMA
       minimumFareApplied: minimumFareApplied,
       originalSubtotal: subtotal,
+      areaPricing: areaPricing,
       details: {
-        // Datos de ruta
         miles: totalMiles,
         googleDurationText: googleDurationText,
         googleDistanceText: googleDistanceText,
         totalSeconds: totalSeconds,
         totalMinutes: totalMinutes,
-        
-        // Datos de tarifas
-        pricePerMinute: ratePerMinute,
-        pricePerMile: ratePerMile,
+        pricePerMinute: 0, // CAMBIADO
+        pricePerMile: 0, // CAMBIADO
         baseFareAmount: baseFare,
-        
-        // Datos de vehículo
         isVehicleSelected: isVehicleSelected,
         isSUV: isSUV,
         vehicleType: isVehicleSelected ? (isSUV ? "SUV" : "Sedan/Truck") : "Default SUV",
-        
-        // Datos de pasajeros
         passengersAdults: passengersAdults,
         passengersKids: passengersKids,
         totalPassengers: passengersAdults + passengersKids,
-        
-        // Datos de tiempo
         useTrafficTime: true,
         departureTime: departureTimeForRoute,
         arrivalTime: new Date(departureTimeForRoute.getTime() + (totalSeconds * 1000)),
-        
-        // Datos de ruta completos
         legs: routeDetails.legs || [],
         routeData: routeData,
-        
-        // NUEVOS CAMPOS PARA TARIFA MÍNIMA
         minimumFareApplied: minimumFareApplied,
         originalSubtotal: subtotal,
         finalSubtotal: finalSubtotal,
         minimumFare: PR.MIN_FARE,
         minimumDistance: PR.MIN_DISTANCE,
         distanceQualifiesForMinimum: totalMiles <= PR.MIN_DISTANCE,
-        
-        // Información adicional
         bookingType: document.getElementById("booking-type").value,
         hasStops: stops && stops.length > 0,
         stopsCount: stops ? stops.length : 0,
-        
-        // Para debugging
         calculationTimestamp: new Date().toISOString(),
-        routeDetails: routeDetails
+        routeDetails: routeDetails,
+        areaDetected: areaPricing.area,
+        areaName: areaPricing.areaName,
+        originalBaseFare: isSUV ? PR.SUV_BF : PR.BF,
+        areaBaseFare: baseFare,
+        pricingAdjustment: baseFare - (isSUV ? PR.SUV_BF : PR.BF),
+        distanceMiles: bookingType === "point-to-point" ? totalMiles : undefined,
+        distancePricingApplied: bookingType === "point-to-point"
       }
     };
     
   } catch (error) {
-    console.error("=== ❌ ERROR EN CÁLCULO DE PRECIO ===");
+    console.error("=== ERROR EN CÁLCULO DE PRECIO ===");
     console.error("Error completo:", error);
     console.error("Stack trace:", error.stack);
     console.error("Parámetros recibidos:", { origin, destination, stops, passengers });
@@ -1886,15 +2394,15 @@ function uPD(priceDetails) {
   
   if (bookingType === "hourly") {
     // Para modo hourly, NO actualizar el price-breakdown
-    // Solo limpiar el contenedor para evitar información obsoleta de otros modos
     priceContainer.innerHTML = '';
-    
-    // El precio fijo ya se maneja con updateFixedHourlyPrice()
-    // y el elemento #fixed-hourly-price que está en el HTML
-    
   } else if (bookingType === "transfer" || bookingType === "point-to-point") {
-    // Para transfer y point-to-point, mostrar el desglose completo
-    const serviceTitle = bookingType === "transfer" ? "Airport Transfer Pricing" : "Point-to-Point Pricing";
+    // Para transfer y point-to-point, mostrar el desglose SIN tiempo y distancia
+    let serviceTitle = "Point-to-Point Pricing";
+    if (bookingType === "transfer") {
+      serviceTitle = "Airport Transfer Pricing";
+    } else if (bookingType === "point-to-point" && priceDetails.areaPricing && priceDetails.areaPricing.distanceMiles) {
+      serviceTitle = `Point-to-Point Pricing (${priceDetails.areaPricing.distanceMiles.toFixed(1)} miles)`;
+    }
     
     priceContainer.innerHTML = `
       <div class="price-details">
@@ -1905,7 +2413,7 @@ function uPD(priceDetails) {
           <div class="price-summary-content">
             <div class="price-item total">
               <span><i class="fas fa-money-check-alt"></i> Total:</span>
-              <span>${priceDetails.total.toFixed(2)}</span>
+              <span>$${priceDetails.total.toFixed(2)}</span>
             </div>
             <div class="more-details-toggle">
               <span>More details</span>
@@ -1919,28 +2427,20 @@ function uPD(priceDetails) {
           <div class="price-breakdown-content">
             <div class="price-item">
               <span><i class="fas fa-car"></i> Base Fare:</span>
-              <span>${priceDetails.baseFare.toFixed(2)}</span>
-            </div>
-            <div class="price-item">
-              <span><i class="fas fa-route"></i> Distance Cost:</span>
-              <span>${priceDetails.distanceCost.toFixed(2)}</span>
-            </div>
-            <div class="price-item">
-              <span><i class="fas fa-clock"></i> Time Cost:</span>
-              <span>${priceDetails.timeCost.toFixed(2)}</span>
+              <span>$${priceDetails.baseFare.toFixed(2)}</span>
             </div>
             ${bookingType === "transfer" && priceDetails.airportFee > 0 ? 
               `<div class="price-item">
                 <span><i class="fas fa-plane"></i> Airport Fee:</span>
-                <span>${priceDetails.airportFee.toFixed(2)}</span>
+                <span>$${priceDetails.airportFee.toFixed(2)}</span>
               </div>` : ""}
             <div class="price-item">
               <span><i class="fas fa-tools"></i> Service Fee (5%):</span>
-              <span>${priceDetails.serviceFee.toFixed(2)}</span>
+              <span>$${priceDetails.serviceFee.toFixed(2)}</span>
             </div>
             <div class="price-item">
               <span><i class="fas fa-receipt"></i> Tax (9.75%):</span>
-              <span>${priceDetails.tax.toFixed(2)}</span>
+              <span>$${priceDetails.tax.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -1996,7 +2496,42 @@ function updateFixedHourlyPrice() {
              "Vehicle:", isVehicleSelected ? (isSUV ? "SUV" : "Sedan") : "Default SUV");
 }
 function aPL(){setupPassengerListeners();}
-function fBD(e){const noStopsMessage="  • Direct route with no stops",n=e.priceDetails||{},bookingTypeLabel="transfer"===e.bookingType?"AIRPORT TRANSFER":"HOURLY";let flightInfo="";if("transfer"===e.bookingType){e.flightInfo&&(flightInfo+=`\nArrival Flight Info: • Airline: ${e.flightInfo.airline} • Flight Number: ${e.flightInfo.flightNumber} • Flight Time: ${e.flightInfo.flightTime||"Not provided"}`);e.departureInfo&&(flightInfo+=`\nDeparture Flight Info:  • Airline: ${e.departureInfo.airline}  • Flight Number: ${e.departureInfo.flightNumber}  • Flight Time: ${e.departureInfo.flightTime||"Not provided"}`);}const o=n&&n.total?`Price Breakdown:- Base Fare: ${(n.baseFare||0).toFixed(2)}${n.distanceCost!==void 0?`• Distance Cost: ${n.distanceCost.toFixed(2)}\n`:""}${n.timeCost!==void 0?`• Time Cost: ${n.timeCost.toFixed(2)}\n`:""}${n.airportFee>0?`• Airport Fee: ${n.airportFee.toFixed(2)}\n`:""}- Service Fee: ${(n.serviceFee||0).toFixed(2)}- Tax: ${(n.tax||0).toFixed(2)}Total: ${(n.total||0).toFixed(2)}`:"";return`Booking ConfirmationDate: ${e.bookingDate||"N/A"}Time: ${e.bookingTime||"N/A"}Booking Type: ${bookingTypeLabel}${flightInfo}${"hourly"===e.bookingType?`Hours: ${e.hourly?.hours||"N/A"}Itinerary: ${e.itinerary||"N/A"}`:`Special Request: ${e.specialRequest||"N/A"}`}Pickup: ${e.pickup||e.transfer?.pickup||"N/A"}Dropoff: ${e.dropoff||e.transfer?.dropoff||"N/A"}Route:${noStopsMessage}${"hourly"!==e.bookingType?`Passengers: ${e.passengers?.total||1} (Adults: ${e.passengers?.adults||1}, Kids: ${e.passengers?.kids||0})`:""}Luggage: ${e.passengers?.luggage||0}Phone: ${e.contact?.phone||"N/A"}Email: ${e.contact?.email||"N/A"}Vehicle: ${e.vehicle?e.vehicle.type:"Not Selected"}${o}`;}
+function fBD(e){
+  const noStopsMessage="  • Direct route with no stops";
+  const n=e.priceDetails||{};
+  const bookingTypeLabel="transfer"===e.bookingType?"AIRPORT TRANSFER":"HOURLY";
+  let flightInfo="";
+  
+  if("transfer"===e.bookingType){
+    e.flightInfo&&(flightInfo+=`\nArrival Flight Info: • Airline: ${e.flightInfo.airline} • Flight Number: ${e.flightInfo.flightNumber} • Flight Time: ${e.flightInfo.flightTime||"Not provided"}`);
+    e.departureInfo&&(flightInfo+=`\nDeparture Flight Info:  • Airline: ${e.departureInfo.airline}  • Flight Number: ${e.departureInfo.flightNumber}  • Flight Time: ${e.departureInfo.flightTime||"Not provided"}`);
+  }
+  
+  // ACTUALIZADO: Eliminar costos de tiempo y distancia del desglose
+  const o=n&&n.total?`Price Breakdown:
+- Base Fare: ${(n.baseFare||0).toFixed(2)}
+${n.airportFee>0?`• Airport Fee: ${n.airportFee.toFixed(2)}\n`:""}
+- Service Fee: ${(n.serviceFee||0).toFixed(2)}
+- Tax: ${(n.tax||0).toFixed(2)}
+Total: ${(n.total||0).toFixed(2)}`:"";
+  
+  return`Booking Confirmation
+Date: ${e.bookingDate||"N/A"}
+Time: ${e.bookingTime||"N/A"}
+Booking Type: ${bookingTypeLabel}
+${flightInfo}
+${"hourly"===e.bookingType?`Hours: ${e.hourly?.hours||"N/A"}
+Itinerary: ${e.itinerary||"N/A"}`:`Special Request: ${e.specialRequest||"N/A"}`}
+Pickup: ${e.pickup||e.transfer?.pickup||"N/A"}
+Dropoff: ${e.dropoff||e.transfer?.dropoff||"N/A"}
+Route:${noStopsMessage}
+${"hourly"!==e.bookingType?`Passengers: ${e.passengers?.total||1} (Adults: ${e.passengers?.adults||1}, Kids: ${e.passengers?.kids||0})`:""}
+Luggage: ${e.passengers?.luggage||0}
+Phone: ${e.contact?.phone||"N/A"}
+Email: ${e.contact?.email||"N/A"}
+Vehicle: ${e.vehicle?e.vehicle.type:"Not Selected"}
+${o}`;
+}
 function sV(){const errors=[];const bookingType=document.getElementById("booking-type").value;const fieldsToValidate={'pickup-date':'Pickup Date','pickup-time':'Pickup Time','pickup':'Pickup Point','phone':'Phone Number','email':'Email','first-name':'First Name','last-name':'Last Name'};if(bookingType==="transfer"||bookingType==="point-to-point"){fieldsToValidate['dropoff']='Drop-off Point';fieldsToValidate['passengers']='Passengers';}for(let[fieldId,fieldName]of Object.entries(fieldsToValidate)){const field=document.getElementById(fieldId);if(!field||!field.value.trim()){errors.push(fieldName);if(field)field.classList.add("error-field");}else{field.classList.remove("error-field");}}if(bookingType==="transfer"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!isBNAAirport(pickup)&&!isBNAAirport(dropoff)){errors.push("At least one location must be Nashville International Airport (BNA)");document.getElementById("pickup").classList.add("error-field");document.getElementById("dropoff").classList.add("error-field");}}if(bookingType==="transfer"||bookingType==="point-to-point"){const passengersCount=parseInt(document.getElementById("passengers").value)||0;const kidsCount=parseInt(document.getElementById("kids").value)||0;const totalPassengers=passengersCount+kidsCount;if(totalPassengers>4){alert("Para "+(bookingType==="transfer"?"Airport Transfer":"Point-to-Point")+", vehicles are not available for more than 4 passengers. Please reduce the number of passengers.");document.getElementById("passengers").classList.add("error-field");document.getElementById("kids").classList.add("error-field");return false;}}if(bookingType==="point-to-point"){const pickup=document.getElementById("pickup").value;const dropoff=document.getElementById("dropoff").value;if(!pickup||!dropoff){alert("Please provide both pickup and dropoff points for Point-to-Point.");return false;}}const phone=document.getElementById("phone").value.trim();if(phone&&!/^\d{10}$/.test(phone)){errors.push("Valid 10-digit Phone Number");document.getElementById("phone").classList.add("error-field");}const email=document.getElementById("email").value.trim();if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){errors.push("Valid Email Address");document.getElementById("email").classList.add("error-field");}if(errors.length>0){alert("Please correct the following:\n\n"+errors.join("\n"));return false;}document.getElementById("vehicle-section").classList.remove("hidden");lVBPC();return true;}
 function tFF(){const e=document.getElementById("flight-type").value,t=document.getElementById("arrival-fields"),n=document.getElementById("departure-fields");t.style.display="arrival"===e?"block":"none",n.style.display="departure"===e?"block":"none"}
 function sV2(vehicleId) {
