@@ -162,7 +162,7 @@ let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={
   PMN:1.00,
   PP:0,
   SFR:.05,
-  TR:.0975,
+  TR:0,           // CHANGED: was 0.0975, now 0 to eliminate tax
   AF:0,
   HR:95,
   MR:95/60,
@@ -170,8 +170,8 @@ let lPDet={},mUTm=null,pIP=!1,mTNB=null,PR={
   SUV_RM:5.35,
   SUV_PMN:1.00,
   SUV_HR:115,
-  MIN_FARE:50.00,    // NUEVA: Tarifa mínima de $50
-  MIN_DISTANCE:2.0   // NUEVA: Aplicar a viajes de 2 millas o menos
+  MIN_FARE:50.00,
+  MIN_DISTANCE:2.0
 },mTNCs=["davidson","williamson","rutherford","wilson","sumner","robertson","cheatham","dickson","maury","marshall","bedford","coffee","cannon","smith","trousdale","macon","clay","jackson","putnam","dekalb","white","cumberland","warren","van buren","grundy","franklin","moore","lincoln","giles","lawrence","wayne","lewis","hickman","perry","humphreys"];
 
 const POINT_TO_POINT_DISTANCE_PRICING = {
@@ -209,6 +209,7 @@ const POINT_TO_POINT_DISTANCE_PRICING = {
   }
 };
 
+// Configuración mejorada de AREA_PRICING_CONFIG
 const AREA_PRICING_CONFIG = {
   // Nivel 1: Donelson - Precio especial más bajo ($76/$76)
   donelson: {
@@ -220,24 +221,36 @@ const AREA_PRICING_CONFIG = {
     level: 1
   },
 
-  // Nivel 2: Precio medio-bajo ($81/$95)
+  // Nivel 2: Precio medio-bajo ($81/$95) - MEJORADO
   downtown_core: {
     name: "Downtown/Midtown/SoBro/Germantown/East Nashville",
     zipCodes: ["37201", "37203", "37219", "37206", "37213"],
-    keywords: ["downtown", "midtown", "sobro", "germantown", "east nashville", 
-               "music city center", "bridgestone arena", "nissan stadium", "broadway", "the gulch"],
+    keywords: [
+      "downtown", "midtown", "sobro", "germantown", "east nashville", 
+      "music city center", "bridgestone arena", "nissan stadium", "broadway", "the gulch",
+      // AGREGADAS: Palabras clave específicas para hoteles downtown
+      "jw marriott", "marriott", "8th avenue", "8th ave", "downtown nashville",
+      "union station", "renaissance", "omni", "westin", "hermitage hotel",
+      "fourth avenue", "4th avenue", "fifth avenue", "5th avenue",
+      "sixth avenue", "6th avenue", "seventh avenue", "7th avenue",
+      "ninth avenue", "9th avenue", "tenth avenue", "10th avenue",
+      "church street", "union street", "broadway street", "commerce street",
+      "first avenue", "1st avenue", "second avenue", "2nd avenue", "third avenue", "3rd avenue"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
   },
+
   brentwood_north: {
-    name: "Brentwood North",
+    name: "Brentwood North", 
     zipCodes: ["37027"],
     keywords: ["brentwood north", "brentwood"],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
   },
+
   green_hills: {
     name: "Green Hills",
     zipCodes: ["37215"],
@@ -246,6 +259,7 @@ const AREA_PRICING_CONFIG = {
     suvBaseFare: 95.00,
     level: 2
   },
+
   oak_hill: {
     name: "Oak Hill",
     zipCodes: ["37220"],
@@ -254,6 +268,7 @@ const AREA_PRICING_CONFIG = {
     suvBaseFare: 95.00,
     level: 2
   },
+
   west_end_vanderbilt: {
     name: "West End / Vanderbilt",
     zipCodes: ["37212"],
@@ -262,6 +277,7 @@ const AREA_PRICING_CONFIG = {
     suvBaseFare: 95.00,
     level: 2
   },
+
   sylvan_park_charlotte: {
     name: "Sylvan Park / Charlotte",
     zipCodes: ["37209"],
@@ -270,6 +286,7 @@ const AREA_PRICING_CONFIG = {
     suvBaseFare: 95.00,
     level: 2
   },
+
   belle_meade: {
     name: "Belle Meade",
     zipCodes: ["37205"],
@@ -278,6 +295,7 @@ const AREA_PRICING_CONFIG = {
     suvBaseFare: 95.00,
     level: 2
   },
+
   forest_hills: {
     name: "Forest Hills",
     zipCodes: ["37215"],
@@ -286,6 +304,7 @@ const AREA_PRICING_CONFIG = {
     suvBaseFare: 95.00,
     level: 2
   },
+
   crieve_hall: {
     name: "Crieve Hall / South Nashville",
     zipCodes: ["37211"],
@@ -589,6 +608,41 @@ function detectAreaByKeywords(address) {
   console.log(`No se encontró área por palabras clave`);
   return null;
 }
+
+// Función de debug para verificar detección
+function debugAreaDetection(address) {
+  console.log("=== DEBUG DETECCIÓN DE ÁREA ===");
+  console.log("Dirección:", address);
+  
+  const zipCode = extractZipCodeFromAddress(address);
+  console.log("ZIP Code extraído:", zipCode);
+  
+  const areaByZip = zipCode ? detectAreaByZipCode(zipCode) : null;
+  console.log("Área por ZIP:", areaByZip);
+  
+  const areaByKeyword = detectAreaByKeywords(address);
+  console.log("Área por palabras clave:", areaByKeyword);
+  
+  const finalArea = detectAreaFromAddress(address);
+  console.log("Área final detectada:", finalArea);
+  
+  const areaConfig = AREA_PRICING_CONFIG[finalArea] || AREA_PRICING_CONFIG.default;
+  console.log("Configuración aplicada:", areaConfig);
+  
+  console.log("===============================");
+  
+  return {
+    address,
+    zipCode,
+    areaByZip,
+    areaByKeyword,
+    finalArea,
+    areaConfig
+  };
+}
+
+// Hacer función disponible globalmente
+window.debugAreaDetection = debugAreaDetection;
 
 function detectAreaFromAddress(address) {
   if (!address) return 'default';
@@ -2247,15 +2301,12 @@ async function cTP(origin, destination, stops, passengers) {
       (isSUV ? areaPricing.suvBaseFare : areaPricing.baseFare) : 
       areaPricing.suvBaseFare;
     
-    // ELIMINADO: const ratePerMile = ...
-    // ELIMINADO: const ratePerMinute = ...
-
     // Calcular costos individuales
     const passengersAdults = parseInt(passengers) || 0;
     const passengersKids = parseInt(document.getElementById("kids").value) || 0;
-    const distanceCost = 0; // ELIMINADO: totalMiles * ratePerMile;
+    const distanceCost = 0;
     const passengerCost = (document.getElementById("booking-type").value === "hourly") ? 0 : (passengersAdults + passengersKids) * PR.PP;
-    const timeCost = 0; // ELIMINADO: totalMinutes * ratePerMinute;
+    const timeCost = 0;
     
     // Calcular subtotal inicial
     let subtotal = baseFare + distanceCost + passengerCost + timeCost;
@@ -2283,8 +2334,8 @@ async function cTP(origin, destination, stops, passengers) {
     // Continuar con el cálculo de tarifas adicionales
     const serviceFee = finalSubtotal * PR.SFR;
     const pretaxTotal = finalSubtotal + serviceFee;
-    const tax = pretaxTotal * PR.TR;
-    const total = pretaxTotal + tax;
+    const tax = 0; // CAMBIADO: era pretaxTotal * PR.TR, ahora 0
+    const total = pretaxTotal; // CAMBIADO: era pretaxTotal + tax, ahora solo pretaxTotal
     
     // LOGGING MEJORADO
     console.log("=== CÁLCULO DE PRECIOS SIN TIEMPO/DISTANCIA ===");
@@ -2316,20 +2367,20 @@ async function cTP(origin, destination, stops, passengers) {
     }
     
     console.log("   Service Fee (5%):", "$" + serviceFee.toFixed(2));
-    console.log("   Tax (9.75%):", "$" + tax.toFixed(2));
+    console.log("   Tax: $0.00 (ELIMINADO)"); // CAMBIADO: antes mostraba cantidad de impuestos
     console.log("   TOTAL FINAL:", "$" + total.toFixed(2));
     console.log("================================================");
     
     // Retornar objeto completo
     return {
       baseFare: baseFare,
-      distanceCost: 0, // CAMBIADO
-      timeCost: 0, // CAMBIADO
+      distanceCost: 0,
+      timeCost: 0,
       passengerCost: passengerCost,
       airportFee: airportFee,
       subtotal: finalSubtotal,
       serviceFee: serviceFee,
-      tax: tax,
+      tax: 0, // CAMBIADO: era tax, ahora 0
       total: total,
       minimumFareApplied: minimumFareApplied,
       originalSubtotal: subtotal,
@@ -2340,8 +2391,8 @@ async function cTP(origin, destination, stops, passengers) {
         googleDistanceText: googleDistanceText,
         totalSeconds: totalSeconds,
         totalMinutes: totalMinutes,
-        pricePerMinute: 0, // CAMBIADO
-        pricePerMile: 0, // CAMBIADO
+        pricePerMinute: 0,
+        pricePerMile: 0,
         baseFareAmount: baseFare,
         isVehicleSelected: isVehicleSelected,
         isSUV: isSUV,
@@ -2385,6 +2436,7 @@ async function cTP(origin, destination, stops, passengers) {
     throw new Error("Error calculando precio: " + (error.message || "Por favor verifica tu ruta e intenta de nuevo"));
   }
 }
+
 function uPWM(){console.log("Price update completed");}
 function tAF() {const e = document.getElementById("airport-fields");const t = document.getElementById("flight-type-container");const n = document.getElementById("arrival-fields");const o = document.getElementById("departure-fields");const bookingType = document.getElementById("booking-type").value;if (bookingType !== "transfer") {e.style.display = "none";t.style.display = "none";n.style.display = "none";o.style.display = "none";return;}e.style.display = "block";t.style.display = "none";const r = document.getElementById("pickup").value.toLowerCase();const a = document.getElementById("dropoff").value.toLowerCase();const c = isBNAAirport(r);const d = isBNAAirport(a);c ? (n.style.display = "block",document.getElementById("flight-type").value = "arrival") : n.style.display = "none";d ? (o.style.display = "block",c || (document.getElementById("flight-type").value = "departure")) : o.style.display = "none";uPWM();}
 function uPD(priceDetails) {
@@ -2396,7 +2448,7 @@ function uPD(priceDetails) {
     // Para modo hourly, NO actualizar el price-breakdown
     priceContainer.innerHTML = '';
   } else if (bookingType === "transfer" || bookingType === "point-to-point") {
-    // Para transfer y point-to-point, mostrar el desglose SIN tiempo y distancia
+    // Para transfer y point-to-point, mostrar el desglose SIN tiempo, distancia y SIN impuestos
     let serviceTitle = "Point-to-Point Pricing";
     if (bookingType === "transfer") {
       serviceTitle = "Airport Transfer Pricing";
@@ -2438,13 +2490,10 @@ function uPD(priceDetails) {
               <span><i class="fas fa-tools"></i> Service Fee (5%):</span>
               <span>$${priceDetails.serviceFee.toFixed(2)}</span>
             </div>
-            <div class="price-item">
-              <span><i class="fas fa-receipt"></i> Tax (9.75%):</span>
-              <span>$${priceDetails.tax.toFixed(2)}</span>
-            </div>
           </div>
         </div>
       </div>`;
+      // ELIMINADO: La línea de impuestos que estaba aquí antes
   }
   
   // Actualizar el precio en el botón de checkout para todos los modos
@@ -2499,7 +2548,7 @@ function aPL(){setupPassengerListeners();}
 function fBD(e){
   const noStopsMessage="  • Direct route with no stops";
   const n=e.priceDetails||{};
-  const bookingTypeLabel="transfer"===e.bookingType?"AIRPORT TRANSFER":"HOURLY";
+  const bookingTypeLabel="transfer"===e.bookingType?"AIRPORT TRANSFER":"point-to-point"===e.bookingType?"POINT-TO-POINT":"HOURLY";
   let flightInfo="";
   
   if("transfer"===e.bookingType){
@@ -2507,13 +2556,12 @@ function fBD(e){
     e.departureInfo&&(flightInfo+=`\nDeparture Flight Info:  • Airline: ${e.departureInfo.airline}  • Flight Number: ${e.departureInfo.flightNumber}  • Flight Time: ${e.departureInfo.flightTime||"Not provided"}`);
   }
   
-  // ACTUALIZADO: Eliminar costos de tiempo y distancia del desglose
+  // ACTUALIZADO: Eliminar impuestos del desglose de precios
   const o=n&&n.total?`Price Breakdown:
-- Base Fare: ${(n.baseFare||0).toFixed(2)}
-${n.airportFee>0?`• Airport Fee: ${n.airportFee.toFixed(2)}\n`:""}
-- Service Fee: ${(n.serviceFee||0).toFixed(2)}
-- Tax: ${(n.tax||0).toFixed(2)}
-Total: ${(n.total||0).toFixed(2)}`:"";
+- Base Fare: $${(n.baseFare||0).toFixed(2)}
+${n.airportFee>0?`• Airport Fee: $${n.airportFee.toFixed(2)}\n`:""}
+- Service Fee: $${(n.serviceFee||0).toFixed(2)}
+Total: $${(n.total||0).toFixed(2)}`:"";
   
   return`Booking Confirmation
 Date: ${e.bookingDate||"N/A"}
