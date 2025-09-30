@@ -760,8 +760,8 @@ const AREA_PRICING_CONFIG = {
   // Default (precio estándar original)
   default: {
     name: "Standard Area",
-    baseFare: 22.50,
-    suvBaseFare: 30.00,
+    baseFare: 60.50,
+    suvBaseFare: 70.00,
     level: 0
   }
 };
@@ -862,7 +862,7 @@ function debugAreaDetection(address) {
 // Hacer función disponible globalmente
 window.debugAreaDetection = debugAreaDetection;
 
-ffunction detectAreaFromAddress(address) {
+function detectAreaFromAddress(address) {
   if (!address) return 'default';
   
   console.log(`📍 Analizando dirección para detección de área: "${address}"`);
