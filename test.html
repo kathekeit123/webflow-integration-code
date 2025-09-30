@@ -215,27 +215,73 @@ const AREA_PRICING_CONFIG = {
   donelson: {
     name: "Donelson",
     zipCodes: ["37214"],
-    keywords: ["donelson", "airport", "nashville international airport", "bna", "music valley"],
+    keywords: [
+      "donelson", 
+      "airport", 
+      "nashville international airport", 
+      "bna", 
+      "music valley",
+      "nashville airport",
+      "terminal",
+      "airport blvd"
+    ],
     baseFare: 76.00,
     suvBaseFare: 76.00,
     level: 1
   },
 
-  // Nivel 2: Precio medio-bajo ($81/$95) - MEJORADO
+  // Nivel 2: Precio medio-bajo ($81/$95)
   downtown_core: {
     name: "Downtown/Midtown/SoBro/Germantown/East Nashville",
     zipCodes: ["37201", "37203", "37219", "37206", "37213"],
     keywords: [
-      "downtown", "midtown", "sobro", "germantown", "east nashville", 
+      // Áreas principales
+      "downtown", "downtown nashville", "midtown", "sobro", "germantown", "east nashville",
       "music city center", "bridgestone arena", "nissan stadium", "broadway", "the gulch",
-      // AGREGADAS: Palabras clave específicas para hoteles downtown
-      "jw marriott", "marriott", "8th avenue", "8th ave", "downtown nashville",
-      "union station", "renaissance", "omni", "westin", "hermitage hotel",
-      "fourth avenue", "4th avenue", "fifth avenue", "5th avenue",
-      "sixth avenue", "6th avenue", "seventh avenue", "7th avenue",
-      "ninth avenue", "9th avenue", "tenth avenue", "10th avenue",
-      "church street", "union street", "broadway street", "commerce street",
-      "first avenue", "1st avenue", "second avenue", "2nd avenue", "third avenue", "3rd avenue"
+      
+      // Hoteles downtown
+      "jw marriott", "marriott", "renaissance", "renaissance nashville", "omni", "omni nashville",
+      "westin", "hermitage hotel", "union station", "union station hotel",
+      "hilton", "hilton nashville", "hyatt", "hyatt place", "hyatt house",
+      "sheraton", "embassy suites", "doubletree", "courtyard marriott",
+      "homewood suites", "springhill suites", "fairfield inn",
+      "holiday inn", "holiday inn express", "hampton inn",
+      "residence inn", "towneplace suites", "aloft",
+      "indigo hotel", "hotel indigo", "thompson nashville",
+      "bobby hotel", "dive motel", "noelle hotel",
+      
+      // Calles numéricas (sin punto para mayor flexibilidad)
+      "1st avenue", "1st ave", "first avenue", "first ave",
+      "2nd avenue", "2nd ave", "second avenue", "second ave",
+      "3rd avenue", "3rd ave", "third avenue", "third ave",
+      "4th avenue", "4th ave", "fourth avenue", "fourth ave",
+      "5th avenue", "5th ave", "fifth avenue", "fifth ave",
+      "6th avenue", "6th ave", "sixth avenue", "sixth ave",
+      "7th avenue", "7th ave", "seventh avenue", "seventh ave",
+      "8th avenue", "8th ave", "eighth avenue", "eighth ave",
+      "9th avenue", "9th ave", "ninth avenue", "ninth ave",
+      "10th avenue", "10th ave", "tenth avenue", "tenth ave",
+      "11th avenue", "11th ave", "eleventh avenue",
+      "12th avenue", "12th ave", "twelfth avenue",
+      
+      // Calles principales downtown
+      "church street", "church st",
+      "union street", "union st",
+      "broadway street", "broadway st",
+      "commerce street", "commerce st",
+      "demonbreun street", "demonbreun st", "demonbreun",
+      "korean veterans blvd", "korean veterans",
+      "division street", "division st",
+      "lafayette street", "lafayette st",
+      "charlotte avenue", "charlotte ave",
+      "deaderick street", "deaderick st",
+      "rosa parks blvd",
+      
+      // Áreas/barrios específicos
+      "printer's alley", "printers alley",
+      "lower broadway", "honky tonk", "honky tonk row",
+      "music row", "gulch", "sobro district",
+      "germantown historic district", "bicentennial mall"
     ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
@@ -245,7 +291,13 @@ const AREA_PRICING_CONFIG = {
   brentwood_north: {
     name: "Brentwood North", 
     zipCodes: ["37027"],
-    keywords: ["brentwood north", "brentwood"],
+    keywords: [
+      "brentwood north", 
+      "brentwood", 
+      "cool springs",
+      "maryland way",
+      "carothers pkwy"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -254,7 +306,14 @@ const AREA_PRICING_CONFIG = {
   green_hills: {
     name: "Green Hills",
     zipCodes: ["37215"],
-    keywords: ["green hills", "mall at green hills", "hillsboro pike"],
+    keywords: [
+      "green hills", 
+      "mall at green hills", 
+      "hillsboro pike", 
+      "hillsboro rd",
+      "hillsboro village",
+      "bluebird cafe"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -263,7 +322,11 @@ const AREA_PRICING_CONFIG = {
   oak_hill: {
     name: "Oak Hill",
     zipCodes: ["37220"],
-    keywords: ["oak hill"],
+    keywords: [
+      "oak hill",
+      "battery ln",
+      "harding place"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -272,7 +335,16 @@ const AREA_PRICING_CONFIG = {
   west_end_vanderbilt: {
     name: "West End / Vanderbilt",
     zipCodes: ["37212"],
-    keywords: ["west end", "vanderbilt", "vanderbilt university", "music row"],
+    keywords: [
+      "west end", 
+      "vanderbilt", 
+      "vanderbilt university", 
+      "music row",
+      "west end ave",
+      "elliston place",
+      "centennial park",
+      "parthenon"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -281,7 +353,13 @@ const AREA_PRICING_CONFIG = {
   sylvan_park_charlotte: {
     name: "Sylvan Park / Charlotte",
     zipCodes: ["37209"],
-    keywords: ["sylvan park", "charlotte", "charlotte avenue"],
+    keywords: [
+      "sylvan park", 
+      "charlotte", 
+      "charlotte avenue",
+      "charlotte pike",
+      "nations"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -290,7 +368,12 @@ const AREA_PRICING_CONFIG = {
   belle_meade: {
     name: "Belle Meade",
     zipCodes: ["37205"],
-    keywords: ["belle meade", "harding pike"],
+    keywords: [
+      "belle meade", 
+      "harding pike",
+      "belle meade blvd",
+      "cheekwood"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -299,7 +382,10 @@ const AREA_PRICING_CONFIG = {
   forest_hills: {
     name: "Forest Hills",
     zipCodes: ["37215"],
-    keywords: ["forest hills"],
+    keywords: [
+      "forest hills",
+      "old hickory blvd"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -308,7 +394,12 @@ const AREA_PRICING_CONFIG = {
   crieve_hall: {
     name: "Crieve Hall / South Nashville",
     zipCodes: ["37211"],
-    keywords: ["crieve hall", "south nashville"],
+    keywords: [
+      "crieve hall", 
+      "south nashville",
+      "nolensville pike",
+      "nolensville rd"
+    ],
     baseFare: 81.00,
     suvBaseFare: 95.00,
     level: 2
@@ -318,63 +409,101 @@ const AREA_PRICING_CONFIG = {
   mt_juliet: {
     name: "Mt. Juliet",
     zipCodes: ["37122"],
-    keywords: ["mt juliet", "mount juliet", "mt. juliet"],
+    keywords: [
+      "mt juliet", 
+      "mount juliet", 
+      "mt. juliet",
+      "providence"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
   },
+
   hermitage: {
     name: "Hermitage",
     zipCodes: ["37076"],
-    keywords: ["hermitage"],
+    keywords: [
+      "hermitage",
+      "old hickory blvd",
+      "andrew jackson pkwy"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
   },
+
   bellevue: {
     name: "Bellevue",
     zipCodes: ["37221"],
-    keywords: ["bellevue"],
+    keywords: [
+      "bellevue",
+      "highway 70 south",
+      "hwy 70 s"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
   },
+
   madison: {
     name: "Madison",
     zipCodes: ["37115"],
-    keywords: ["madison"],
+    keywords: [
+      "madison",
+      "gallatin pike",
+      "gallatin rd"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
   },
+
   inglewood: {
     name: "Inglewood",
     zipCodes: ["37216"],
-    keywords: ["inglewood"],
+    keywords: [
+      "inglewood",
+      "riverside village"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
   },
+
   priest_lake_antioch: {
     name: "Priest Lake / Antioch",
     zipCodes: ["37217", "37013"],
-    keywords: ["priest lake", "antioch"],
+    keywords: [
+      "priest lake", 
+      "antioch",
+      "bell road",
+      "blue hole rd"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
   },
+
   bordeaux: {
     name: "Bordeaux",
     zipCodes: ["37218"],
-    keywords: ["bordeaux"],
+    keywords: [
+      "bordeaux",
+      "clarksville pike"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
   },
+
   old_hickory: {
     name: "Old Hickory",
     zipCodes: ["37138"],
-    keywords: ["old hickory"],
+    keywords: [
+      "old hickory",
+      "old hickory blvd"
+    ],
     baseFare: 90.00,
     suvBaseFare: 110.00,
     level: 3
@@ -384,63 +513,95 @@ const AREA_PRICING_CONFIG = {
   hendersonville: {
     name: "Hendersonville",
     zipCodes: ["37075"],
-    keywords: ["hendersonville"],
+    keywords: [
+      "hendersonville",
+      "indian lake",
+      "vietnam veterans blvd"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
   },
+
   nolensville: {
     name: "Nolensville",
     zipCodes: ["37135"],
-    keywords: ["nolensville"],
+    keywords: [
+      "nolensville",
+      "rocky fork"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
   },
+
   la_vergne: {
     name: "La Vergne",
     zipCodes: ["37086"],
-    keywords: ["la vergne", "lavergne"],
+    keywords: [
+      "la vergne", 
+      "lavergne",
+      "murfreesboro rd"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
   },
+
   joelton: {
     name: "Joelton",
     zipCodes: ["37080"],
-    keywords: ["joelton"],
+    keywords: [
+      "joelton",
+      "clarksville pike"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
   },
+
   goodlettsville_davidson: {
     name: "Goodlettsville (Davidson side)",
     zipCodes: ["37072"],
-    keywords: ["goodlettsville davidson", "goodlettsville"],
+    keywords: [
+      "goodlettsville davidson", 
+      "goodlettsville",
+      "rivergate"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
   },
+
   ashland_city: {
     name: "Ashland City",
     zipCodes: ["37015"],
-    keywords: ["ashland city"],
+    keywords: [
+      "ashland city",
+      "highway 12"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
   },
+
   kingston_springs: {
     name: "Kingston Springs",
     zipCodes: ["37082"],
-    keywords: ["kingston springs"],
+    keywords: [
+      "kingston springs"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
   },
+
   pegram: {
     name: "Pegram",
     zipCodes: ["37143"],
-    keywords: ["pegram"],
+    keywords: [
+      "pegram"
+    ],
     baseFare: 105.00,
     suvBaseFare: 129.00,
     level: 4
@@ -450,39 +611,58 @@ const AREA_PRICING_CONFIG = {
   franklin: {
     name: "Franklin",
     zipCodes: ["37064", "37067", "37069"],
-    keywords: ["franklin"],
+    keywords: [
+      "franklin",
+      "cool springs",
+      "mcewen",
+      "westhaven"
+    ],
     baseFare: 119.00,
     suvBaseFare: 143.00,
     level: 5
   },
+
   lebanon: {
     name: "Lebanon",
     zipCodes: ["37087", "37090"],
-    keywords: ["lebanon"],
+    keywords: [
+      "lebanon",
+      "carthage pike"
+    ],
     baseFare: 119.00,
     suvBaseFare: 143.00,
     level: 5
   },
+
   white_house: {
     name: "White House",
     zipCodes: ["37188"],
-    keywords: ["white house"],
+    keywords: [
+      "white house",
+      "highway 76"
+    ],
     baseFare: 119.00,
     suvBaseFare: 143.00,
     level: 5
   },
+
   pleasant_view: {
     name: "Pleasant View",
     zipCodes: ["37146"],
-    keywords: ["pleasant view"],
+    keywords: [
+      "pleasant view"
+    ],
     baseFare: 119.00,
     suvBaseFare: 143.00,
     level: 5
   },
+
   ridgetop: {
     name: "Ridgetop",
     zipCodes: ["37152"],
-    keywords: ["ridgetop"],
+    keywords: [
+      "ridgetop"
+    ],
     baseFare: 119.00,
     suvBaseFare: 143.00,
     level: 5
@@ -492,39 +672,60 @@ const AREA_PRICING_CONFIG = {
   smyrna: {
     name: "Smyrna",
     zipCodes: ["37167"],
-    keywords: ["smyrna"],
+    keywords: [
+      "smyrna",
+      "sam ridley pkwy"
+    ],
     baseFare: 124.00,
     suvBaseFare: 148.00,
     level: 6
   },
+
   gallatin: {
     name: "Gallatin",
     zipCodes: ["37066"],
-    keywords: ["gallatin"],
+    keywords: [
+      "gallatin",
+      "nashville pike"
+    ],
     baseFare: 133.00,
     suvBaseFare: 157.00,
     level: 6
   },
+
   springfield: {
     name: "Springfield",
     zipCodes: ["37172"],
-    keywords: ["springfield"],
+    keywords: [
+      "springfield",
+      "memorial blvd"
+    ],
     baseFare: 133.00,
     suvBaseFare: 157.00,
     level: 6
   },
+
   watertown: {
     name: "Watertown",
     zipCodes: ["37184"],
-    keywords: ["watertown"],
+    keywords: [
+      "watertown"
+    ],
     baseFare: 133.00,
     suvBaseFare: 157.00,
     level: 6
   },
+
   murfreesboro: {
     name: "Murfreesboro",
     zipCodes: ["37128", "37129", "37130"],
-    keywords: ["murfreesboro"],
+    keywords: [
+      "murfreesboro",
+      "mtsu",
+      "middle tennessee state",
+      "medical center pkwy",
+      "old fort pkwy"
+    ],
     baseFare: 138.00,
     suvBaseFare: 162.00,
     level: 6
@@ -534,15 +735,23 @@ const AREA_PRICING_CONFIG = {
   spring_hill: {
     name: "Spring Hill",
     zipCodes: ["37174"],
-    keywords: ["spring hill"],
+    keywords: [
+      "spring hill",
+      "saturn pkwy"
+    ],
     baseFare: 152.00,
     suvBaseFare: 176.00,
     level: 7
   },
+
   thompsons_station: {
     name: "Thompson's Station",
     zipCodes: ["37179"],
-    keywords: ["thompson station", "thompsons station", "thompson's station"],
+    keywords: [
+      "thompson station", 
+      "thompsons station", 
+      "thompson's station"
+    ],
     baseFare: 152.00,
     suvBaseFare: 176.00,
     level: 7
@@ -551,13 +760,11 @@ const AREA_PRICING_CONFIG = {
   // Default (precio estándar original)
   default: {
     name: "Standard Area",
-    baseFare: 22.50,  // Original PR.BF
-    suvBaseFare: 30.00,  // Original PR.SUV_BF
+    baseFare: 22.50,
+    suvBaseFare: 30.00,
     level: 0
   }
 };
-
-
 
 function extractZipCodeFromAddress(address) {
   if (!address) return null;
@@ -589,23 +796,34 @@ function detectAreaByKeywords(address) {
   if (!address) return null;
   
   const addressLower = address.toLowerCase();
-  console.log(`Buscando área por palabras clave en: "${addressLower}"`);
+  console.log(`🔍 Buscando área por palabras clave en: "${addressLower}"`);
   
   // Ordenar por nivel de precio para dar prioridad a áreas más específicas
   const sortedAreas = Object.entries(AREA_PRICING_CONFIG)
     .filter(([key]) => key !== 'default')
     .sort(([,a], [,b]) => a.level - b.level);
   
+  // MEJORADO: Búsqueda más flexible con coincidencias parciales
   for (const [areaKey, areaData] of sortedAreas) {
     for (const keyword of areaData.keywords) {
-      if (addressLower.includes(keyword.toLowerCase())) {
-        console.log(`Área detectada por palabra clave "${keyword}": ${areaData.name} (Nivel ${areaData.level})`);
+      const keywordLower = keyword.toLowerCase();
+      
+      // Método 1: Coincidencia exacta de palabra completa
+      const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i');
+      if (wordBoundaryRegex.test(addressLower)) {
+        console.log(`✅ Área detectada por palabra clave exacta "${keyword}": ${areaData.name} (Nivel ${areaData.level})`);
+        return areaKey;
+      }
+      
+      // Método 2: Coincidencia flexible (para casos como "8th" en "201 8th Ave")
+      if (addressLower.includes(keywordLower)) {
+        console.log(`✅ Área detectada por coincidencia flexible "${keyword}": ${areaData.name} (Nivel ${areaData.level})`);
         return areaKey;
       }
     }
   }
   
-  console.log(`No se encontró área por palabras clave`);
+  console.log(`❌ No se encontró área por palabras clave`);
   return null;
 }
 
@@ -644,27 +862,53 @@ function debugAreaDetection(address) {
 // Hacer función disponible globalmente
 window.debugAreaDetection = debugAreaDetection;
 
-function detectAreaFromAddress(address) {
+ffunction detectAreaFromAddress(address) {
   if (!address) return 'default';
   
-  console.log(`Analizando dirección para detección de área: "${address}"`);
+  console.log(`📍 Analizando dirección para detección de área: "${address}"`);
   
-  // Primero intentar detección por código postal (más confiable)
+  // PASO 1: Intentar detección por código postal (más confiable si existe)
   const zipCode = extractZipCodeFromAddress(address);
   if (zipCode) {
+    console.log(`📮 Código postal encontrado: ${zipCode}`);
     const areaByZip = detectAreaByZipCode(zipCode);
     if (areaByZip) {
+      console.log(`✅ Área detectada por ZIP: ${areaByZip}`);
       return areaByZip;
+    } else {
+      console.log(`⚠️ ZIP ${zipCode} no coincide con ninguna área específica`);
     }
+  } else {
+    console.log(`📮 No se encontró código postal en la dirección`);
   }
   
-  // Luego intentar detección por palabras clave
+  // PASO 2: Detección por palabras clave (RESPALDO PRINCIPAL)
+  console.log(`🔍 Intentando detección por palabras clave...`);
   const areaByKeyword = detectAreaByKeywords(address);
   if (areaByKeyword) {
+    console.log(`✅ Área detectada por palabras clave: ${areaByKeyword}`);
     return areaByKeyword;
   }
   
-  console.log(`No se detectó área específica, usando precios estándar`);
+  // PASO 3: Detección adicional por ciudad/estado en la dirección
+  const cityStateMatch = address.match(/,\s*([^,]+),\s*TN/i);
+  if (cityStateMatch) {
+    const cityName = cityStateMatch[1].toLowerCase().trim();
+    console.log(`🏙️ Ciudad detectada en dirección: ${cityName}`);
+    
+    // Buscar si el nombre de la ciudad coincide con alguna área
+    for (const [areaKey, areaData] of Object.entries(AREA_PRICING_CONFIG)) {
+      if (areaKey === 'default') continue;
+      
+      const areaNameLower = areaData.name.toLowerCase();
+      if (areaNameLower.includes(cityName) || cityName.includes(areaNameLower.split('/')[0].trim())) {
+        console.log(`✅ Área detectada por ciudad: ${areaKey}`);
+        return areaKey;
+      }
+    }
+  }
+  
+  console.log(`⚠️ No se detectó área específica, usando precios estándar`);
   return 'default';
 }
 
